@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
 import seaborn as sns  # ; sns.set_theme()
+from data_preparation import Data
 
 
 def corr_mat(df, tgt_idx, src_idx):
@@ -70,18 +71,10 @@ if __name__ == '__main__':
     dpi = 200
     out_dir = 'correlation'
     os.makedirs(out_dir, exist_ok=True)
-    # read file
-    df = pd.read_csv("data/tot.csv", sep=';')
-    df.set_index('sample')
 
-    # drop textual cols
-    df = df.drop(['campo', 'prof cm', 'res_Text'], axis=1)  # 'TIPO_CAMPIONE',
-
-    # get indexes of source vars and target vars
-    src_idx = df.columns[df.columns.str.contains('ir_', case=False)].to_list() + \
-        df.columns[df.columns.str.contains('gamma_', case=False)].to_list()  # 2129
-
-    tgt_idx = df.columns[df.columns.str.contains('res_', case=False)].to_list()  # 15
+    # get data
+    data = Data()
+    df, src_idx, tgt_idx = data.joined()
 
     # get correlation matrix
     corr = corr_mat(df, tgt_idx, src_idx)
