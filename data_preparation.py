@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from sklearn.decomposition import PCA
 
 
 class Data(object):
@@ -26,8 +27,16 @@ class Data(object):
     def get_resistivita(self):
         return self.resistivita
 
-    def get_ir(self):
-        return self.ir
+    def get_ir(self, n_components=None):
+        if n_components is not None and not n_components == 0:
+            # remove dimensions through pca
+            pca = PCA(n_components=n_components)
+            x_pca = pca.fit_transform(self.ir.to_numpy())
+            # create dataframe
+            res = pd.DataFrame(data=x_pca, index=self.ir.index, columns=range(x_pca.shape[1]))
+            return res
+        else:
+            return self.ir
 
     def get_gamma(self):
         return self.gamma
@@ -35,12 +44,14 @@ class Data(object):
     def get_locations(self):
         pass
 
-    def joined(self):
+    def joined(self, ir_n_components=None):
+        # get nir-swir
+        ir = self.get_ir(n_components=ir_n_components)
         # merge
-        tot = pd.merge(self.ir, self.gamma, left_index=True, right_index=True)
+        tot = pd.merge(ir, self.gamma, left_index=True, right_index=True)
         tot = pd.merge(tot, self.resistivita, left_index=True, right_index=True)
         # define source and target keys
-        src_keys = list(self.ir.columns) + list(self.gamma.columns)
+        src_keys = list(ir.columns) + list(self.gamma.columns)
         tgt_keys = list(self.resistivita.columns)
         # return df with keys
         return tot, src_keys, tgt_keys
@@ -49,4 +60,6 @@ class Data(object):
 if __name__ == '__main__':
     data = Data()
     tot, src_keys, tgt_keys = data.joined()
-    import ipdb; ipdb.set_trace()
+    tot2, src_keys2, tgt_keys2 = data.joined(ir_n_components=0.99)
+    import ipdb
+    ipdb.set_trace()

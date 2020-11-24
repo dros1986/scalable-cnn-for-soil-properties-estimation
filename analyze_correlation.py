@@ -74,19 +74,26 @@ if __name__ == '__main__':
 
     # get data
     data = Data()
-    df, src_idx, tgt_idx = data.joined()
 
-    # get correlation matrix
-    corr = corr_mat(df, tgt_idx, src_idx)
-    corr = corr.round(4)
-    corr.to_csv(os.path.join(out_dir, 'corr_mat.csv'), sep=';')
-
-    # save top 10
-    top10 = corr_mat_image_top_n(corr, n=10, sort=True, figsize=(30, 20), annotate=False)
-    top10.savefig(os.path.join(out_dir, 'top10.png'), dpi=dpi)
-    # save top 1 annotated
-    top1_ann = corr_mat_image_top_n(corr, n=1, sort=True, figsize=(20, 20), annotate=True)
-    top1_ann.savefig(os.path.join(out_dir, 'top1_ann.png'), dpi=dpi)
-    # save top 1 not annotated
-    top1_na = corr_mat_image_top_n(corr, n=1, sort=True, figsize=(10, 20), annotate=False)
-    top1_na.savefig(os.path.join(out_dir, 'top1_na.png'), dpi=dpi)
+    # define pca retained variances
+    pca_rv = [0, 0.9, 0.99, 0.999]
+    # for each retained variance, compute correlation
+    for cur_pca_rv in pca_rv:
+        # define prefix
+        pfx = '{:.3f}_'.format(cur_pca_rv)
+        # get data
+        df, src_idx, tgt_idx = data.joined(ir_n_components=cur_pca_rv)
+        # get correlation matrix
+        corr = corr_mat(df, tgt_idx, src_idx)
+        # save correlation matrix
+        corr_rnd = corr.round(4)
+        corr_rnd.to_csv(os.path.join(out_dir, pfx+'corr_mat.csv'), sep=';')
+        # save top 10
+        top10 = corr_mat_image_top_n(corr, n=10, sort=True, figsize=(30, 20), annotate=False)
+        top10.savefig(os.path.join(out_dir, pfx+'top10.png'), dpi=dpi)
+        # save top 1 annotated
+        top1_ann = corr_mat_image_top_n(corr, n=1, sort=True, figsize=(20, 20), annotate=True)
+        top1_ann.savefig(os.path.join(out_dir, pfx+'top1_ann.png'), dpi=dpi)
+        # save top 1 not annotated
+        top1_na = corr_mat_image_top_n(corr, n=1, sort=True, figsize=(10, 20), annotate=False)
+        top1_na.savefig(os.path.join(out_dir, pfx+'top1_na.png'), dpi=dpi)
