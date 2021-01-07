@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.decomposition import PCA
-from data_preparation import Data
+from DatasetPignoletto import DatasetPignoletto
 
 
 def apply_pca(df, n_components=0.99):
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     # set figures parameters
     dpi = 100
     # get data
-    data = Data()
+    data = DatasetPignoletto()
     # get nir-swir
     ir = data.get_ir()
     # define pca retained variances

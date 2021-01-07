@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
 import seaborn as sns  # ; sns.set_theme()
-from data_preparation import Data
+from DatasetPignoletto import DatasetPignoletto
 
 
 def corr_mat(df, tgt_idx, src_idx):
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     os.makedirs(out_dir, exist_ok=True)
 
     # get data
-    data = Data()
+    data = DatasetPignoletto()
 
     # define pca retained variances
     pca_rv = [0, 0.9, 0.99, 0.999]
