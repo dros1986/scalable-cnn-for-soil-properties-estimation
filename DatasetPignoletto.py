@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.decomposition import PCA
 
 
-class Data(object):
+class DatasetPignoletto(object):
     def __init__(self, dir='data'):
         # read csv files
         ir = pd.read_csv(os.path.join(dir, 'ir.csv'), sep=';')
