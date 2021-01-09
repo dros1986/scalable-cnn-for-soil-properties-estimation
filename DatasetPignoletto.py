@@ -1,10 +1,13 @@
 import os
+import random
+import numpy as np
 import pandas as pd
+import torch
 from sklearn.decomposition import PCA
 
 
 class DatasetPignoletto(object):
-    def __init__(self, dir='data'):
+    def __init__(self, dir='data', batch_size=25):
         # read csv files
         ir = pd.read_csv(os.path.join(dir, 'ir.csv'), sep=';')
         map = pd.read_csv(os.path.join(dir, 'map.csv'), sep=';')
@@ -23,6 +26,25 @@ class DatasetPignoletto(object):
         self.gamma = per_informatici.set_index('SAMPLE')
         # save mapping
         self.map = map
+        # get source for iterator
+        self.ir_x = np.sort(np.array([float(x) for x in self.ir.columns]))
+        self.ir_y = self.ir[[str(int(cur_b)) for cur_b in self.ir_x]].to_numpy()
+        # normalize ir signal
+        self.ir_y = self.ir_y / np.expand_dims(self.ir_y.sum(1),1)
+        # unsqueeze and make it torch
+        self.ir_y = torch.from_numpy(self.ir_y).float().unsqueeze(1).unsqueeze(1)
+        # get target
+        tg_cols = ['pH', 'P (mg/kg)', 'N (%)', 'Sg1 (g/kg)', 'St (g/kg)', 'L (g/kg)', 'A (g/kg)']
+        self.tg_vars = resistivita[tg_cols].to_numpy()
+        self.tg_vars = torch.from_numpy(self.tg_vars).float()
+        # create batch info
+        self.batch_size = batch_size
+        self.n_batches = self.ir_y.shape[0] // self.batch_size
+        self.cur_batch = 0
+        # define random sequence
+        self.seq = list(range(self.tg_vars.shape[0]))
+        random.shuffle(self.seq)
+
 
     def get_resistivita(self):
         return self.resistivita
@@ -56,10 +78,33 @@ class DatasetPignoletto(object):
         # return df with keys
         return tot, src_keys, tgt_keys
 
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if not self.cur_batch < self.n_batches:
+            self.cur_batch = 0
+            random.shuffle(self.seq)
+            raise StopIteration
+        else:
+            isrt = self.cur_batch*self.batch_size
+            iend = isrt + self.batch_size
+            ids = self.seq[isrt:iend]
+            self.cur_batch += 1
+            return self.ir_y[ids], self.tg_vars[ids]
+
+    def __len__(self):
+        return self.n_batches
+
 
 if __name__ == '__main__':
-    data = Data()
+    data = DatasetPignoletto()
     tot, src_keys, tgt_keys = data.joined()
     tot2, src_keys2, tgt_keys2 = data.joined(ir_n_components=0.99)
-    import ipdb
-    ipdb.set_trace()
+    # test iter
+    for src,tgt in data:
+        print(src.shape)
+        print(tgt.shape)
+        print('----')
+    # import ipdb
+    # ipdb.set_trace()
