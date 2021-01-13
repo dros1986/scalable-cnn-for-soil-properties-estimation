@@ -9,6 +9,25 @@ import matplotlib.pyplot as plt
 from DatasetLucas import DatasetLucas
 from DatasetPignoletto import DatasetPignoletto
 
+# define test procedure
+def test(net, ds):
+    net.eval()
+    loss = None
+    for src,tgt in ds:
+        # move in device
+        src = src.to(args.device)
+        tgt = tgt.to(args.device)
+        # compute prediction
+        out = net(src)
+        # compare
+        cur_l = F.mse_loss(out,tgt).cpu()
+        loss = cur_l if loss is None else torch.cat((loss,cur_l), axis=0)
+    # compute average
+    loss = loss.mean()
+    net.train()
+    return loss
+
+
 # define network
 class Net(nn.Module):
     def __init__(self):
@@ -49,6 +68,8 @@ if __name__ == '__main__':
     					default=8, type=int)
     parser.add_argument("-bs", "--batchsize", help="Batch size.",
     					default=100, type=int)
+    parser.add_argument("-ne", "--nepochs", help="Number of epochs.",
+    					default=500, type=int)
     parser.add_argument("-lr", "--learning_rate", help="Learning rate.",
     					default=1e-3, type=float)
     parser.add_argument("-dev", "--device", help="Device.",
@@ -68,32 +89,42 @@ if __name__ == '__main__':
     # define datasets
     lucas = DatasetLucas(csv = args.lucas_csv, batch_size = args.batchsize)
     pignoletto = DatasetPignoletto()
-    # # get first element of both datasets
-    # lu_ir, lu_tg  = iter(lucas).__next__()
-    # pi_ir, pi_tg = iter(pignoletto).__next__()
-    # lu_ir = lu_ir.squeeze(1).squeeze(1)
-    # pi_ir = pi_ir.squeeze(1).squeeze(1)
-    # # plot
-    # plt.plot(lu_ir[0], label='lucas')
-    # plt.plot(pi_ir[0], label='pignoletto')
-    # plt.legend()
-    # plt.show()
-    # for each element
-    for i, (src, tgt) in enumerate(lucas): # 2101 7
-        # move in device
-        src = src.to(args.device)
-        tgt = tgt.to(args.device)
-        # reset grads
-        optimizer.zero_grad()
-        # apply network
-        out = net(src)
-        print(src.size())
-        print(out.size())
-        # apply loss
-        cur_l = loss(out, tgt)
-        # print
-        print('Loss = {:.4f}'.format(cur_l))
-        # backward propagation
-        l.backward()
-        # update weights
-        optimizer.step()
+    # get first element of both datasets
+    lu_ir, lu_tg  = iter(lucas).__next__()
+    pi_ir, pi_tg = iter(pignoletto).__next__()
+    lu_ir = lu_ir.squeeze(1).squeeze(1)
+    pi_ir = pi_ir.squeeze(1).squeeze(1)
+    # plot
+    plt.plot(lu_ir[0], label='lucas')
+    plt.plot(pi_ir[0], label='pignoletto')
+    plt.legend()
+    plt.show()
+    best_val = None
+    # for each epoch
+    for ne in range(args.nepochs):
+        # for each element
+        for i, (src, tgt) in enumerate(lucas): # 2101 7
+            # move in device
+            src = src.to(args.device)
+            tgt = tgt.to(args.device)
+            # reset grads
+            optimizer.zero_grad()
+            # apply network
+            out = net(src)
+            # print(src.size())
+            # print(out.size())
+            # apply loss
+            cur_l = loss(out, tgt)
+            # print
+            print('Loss = {:.4f} - Val: {:.4f}'.format(cur_l, best_val if best_val is not None else 0.0))
+            # backward propagation
+            cur_l.backward()
+            # update weights
+            optimizer.step()
+        torch.save({'net':net.state_dict(),'opt':optimizer.state_dict()}, 'latest.pth')
+        # test on pignoletto dataset
+        dist = test(net, pignoletto)
+        if best_val is None or dist < best_val:
+            torch.save({'net':net.state_dict(),'opt':optimizer.state_dict()}, 'best.pth')
+            best_val = dist
+        # print('Distance with validation set: {:.4f}'.format(dist))
