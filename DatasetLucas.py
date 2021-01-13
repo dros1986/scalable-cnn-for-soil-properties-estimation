@@ -38,7 +38,6 @@ class DatasetLucas(object):
         tg_cols = ['pH.in.H2O', 'P', 'N', 'coarse', 'sand', 'silt', 'clay']
         self.tg_vars = df[tg_cols].to_numpy()
         self.tg_vars = torch.from_numpy(self.tg_vars).float()
-        import ipdb; ipdb.set_trace()
         # define number of batches
         self.n_batches = self.tg_vars.shape[0] // self.batch_size
         # define random sequence
