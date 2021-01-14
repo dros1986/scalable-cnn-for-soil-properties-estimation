@@ -7,7 +7,6 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 from DatasetLucas import DatasetLucas
-from DatasetPignoletto import DatasetPignoletto
 
 # define test procedure
 def test(net, ds):
