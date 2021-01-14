@@ -1,4 +1,5 @@
 import os
+import math
 import random
 import torch
 import pandas as pd
@@ -12,7 +13,8 @@ class DatasetLucas(object):
             src_prefix='spc.',
             tgt_vars=['coarse','clay','silt','sand','pH.in.CaCl2','pH.in.H2O','OC','CaCO3','N','P','K','CEC'],
             batch_size=100,
-            sep=','
+            sep=',',
+            drop_last = True
         ):
         # save batch size
         self.batch_size = batch_size
@@ -40,7 +42,10 @@ class DatasetLucas(object):
         self.tgt_vars_vr = self.tgt_vars.var(0).unsqueeze(0)
         self.tgt_vars = (self.tgt_vars - self.tgt_vars_mu) / self.tgt_vars_vr
         # define number of batches
-        self.n_batches = self.tgt_vars.size(0) // self.batch_size
+        if drop_last:
+            self.n_batches = self.tgt_vars.size(0) // self.batch_size
+        else:
+            self.n_batches = math.ceil(self.tgt_vars.size(0) / self.batch_size)
         # define random sequence
         self.seq = list(range(self.tgt_vars.shape[0]))
         random.shuffle(self.seq)
@@ -61,7 +66,9 @@ class DatasetLucas(object):
             iend = isrt + self.batch_size
             ids = self.seq[isrt:iend]
             self.cur_batch += 1
-            return self.src_y[ids], self.tgt_vars[ids]
+            src_y = self.src_y[ids].unsqueeze(1).unsqueeze(1).float()
+            tgt = self.tgt_vars[ids].float()
+            return src_y, tgt
 
     def __len__(self):
         return self.n_batches

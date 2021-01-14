@@ -17,7 +17,8 @@ def test(net, ds):
         src = src.to(args.device)
         tgt = tgt.to(args.device)
         # compute prediction
-        out = net(src)
+        with torch.no_grad():
+            out = net(src)
         # compare
         cur_l = F.l1_loss(out,tgt).cpu()
         loss = cur_l if loss is None else torch.cat((loss,cur_l), axis=0)
@@ -36,8 +37,11 @@ class Net(nn.Module):
         self.b3 = self.block(32,64)
         self.b4 = self.block(64,128)
         self.b5 = self.block(128,256)
-        self.b6 = self.block(256,128)
-        self.final = nn.Linear(3968,7)
+        self.b6 = self.block(256,256)
+        self.b7 = self.block(256,256)
+        self.b8 = self.block(256,256)
+        self.b9 = self.block(256,256)
+        self.final = nn.Linear(1792,12)
 
 
     def block(self, ch_in, ch_out, sz=(1,3), st=(1,2), pad=0):
@@ -54,6 +58,9 @@ class Net(nn.Module):
         x = self.b4(x)
         x = self.b5(x)
         x = self.b6(x)
+        x = self.b7(x)
+        x = self.b8(x)
+        x = self.b9(x)
         x = x.view(x.size(0),-1)
         x = self.final(x)
         return x
@@ -87,8 +94,8 @@ if __name__ == '__main__':
     # init optimizer
     optimizer = optim.Adam(net.parameters(), lr=args.learning_rate)
     # define datasets
-    train_dataset = DatasetLucas(csv = args.train_csv, batch_size = args.batchsize)
-    val_dataset = DatasetLucas(csv = args.val_csv, batch_size = args.batchsize)
+    train_dataset = DatasetLucas(csv = args.train_csv, batch_size = args.batchsize, drop_last=True)
+    val_dataset = DatasetLucas(csv = args.val_csv, batch_size = args.batchsize, drop_last=False)
     # init metric
     best_val = None
     # for each epoch
