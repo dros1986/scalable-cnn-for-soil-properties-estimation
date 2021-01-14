@@ -20,7 +20,7 @@ def test(net, ds):
         # compute prediction
         out = net(src)
         # compare
-        cur_l = F.mse_loss(out,tgt).cpu()
+        cur_l = F.l1_loss(out,tgt).cpu()
         loss = cur_l if loss is None else torch.cat((loss,cur_l), axis=0)
     # compute average
     loss = loss.mean()
@@ -74,36 +74,28 @@ if __name__ == '__main__':
     					default=1e-3, type=float)
     parser.add_argument("-dev", "--device", help="Device.",
     					default='cpu', type=str)
-    parser.add_argument("-lcsv", "--lucas_csv", help="Lucas csv file.",
-    					default='/home/flavio/datasets/LucasLibrary/LucasTopsoil/LUCAS.SOIL_corr_CLEAN.csv')
-    parser.add_argument("-tsl", "--test_list", help="Test list.",
-    					default='./datasets/places-instagram/test-list.txt')
+    parser.add_argument("-tcsv", "--train_csv", help="Lucas train csv file.",
+    					default='/home/flavio/datasets/LucasLibrary/LucasTopsoil/LUCAS.SOIL_corr_FULL_train.csv')
+    parser.add_argument("-vcsv", "--val_csv", help="Lucas train csv file.",
+    					default='/home/flavio/datasets/LucasLibrary/LucasTopsoil/LUCAS.SOIL_corr_FULL_val.csv')
     args = parser.parse_args()
     # define network
     net = Net()
     net.to(args.device)
     # init loss
-    loss = nn.MSELoss()
+    # loss = nn.MSELoss()
+    loss = F.l1_loss
     # init optimizer
     optimizer = optim.Adam(net.parameters(), lr=args.learning_rate)
     # define datasets
-    lucas = DatasetLucas(csv = args.lucas_csv, batch_size = args.batchsize)
-    pignoletto = DatasetPignoletto()
-    # get first element of both datasets
-    lu_ir, lu_tg  = iter(lucas).__next__()
-    pi_ir, pi_tg = iter(pignoletto).__next__()
-    lu_ir = lu_ir.squeeze(1).squeeze(1)
-    pi_ir = pi_ir.squeeze(1).squeeze(1)
-    # plot
-    plt.plot(lu_ir[0], label='lucas')
-    plt.plot(pi_ir[0], label='pignoletto')
-    plt.legend()
-    plt.show()
+    train_dataset = DatasetLucas(csv = args.train_csv, batch_size = args.batchsize)
+    val_dataset = DatasetLucas(csv = args.val_csv, batch_size = args.batchsize)
+    # init metric
     best_val = None
     # for each epoch
     for ne in range(args.nepochs):
         # for each element
-        for i, (src, tgt) in enumerate(lucas): # 2101 7
+        for i, (src, tgt) in enumerate(train_dataset):
             # move in device
             src = src.to(args.device)
             tgt = tgt.to(args.device)
@@ -111,8 +103,6 @@ if __name__ == '__main__':
             optimizer.zero_grad()
             # apply network
             out = net(src)
-            # print(src.size())
-            # print(out.size())
             # apply loss
             cur_l = loss(out, tgt)
             # print
@@ -123,7 +113,7 @@ if __name__ == '__main__':
             optimizer.step()
         torch.save({'net':net.state_dict(),'opt':optimizer.state_dict()}, 'latest.pth')
         # test on pignoletto dataset
-        dist = test(net, pignoletto)
+        dist = test(net, val_dataset)
         if best_val is None or dist < best_val:
             torch.save({'net':net.state_dict(),'opt':optimizer.state_dict()}, 'best.pth')
             best_val = dist
