@@ -118,10 +118,11 @@ if __name__ == '__main__':
             cur_l.backward()
             # update weights
             optimizer.step()
-        torch.save({'net':net.state_dict(),'opt':optimizer.state_dict()}, 'latest.pth')
+        state = {'net':net.state_dict(), 'opt':optimizer.state_dict(), 'vars':vars}
+        torch.save(state, 'latest.pth')
         # test on pignoletto dataset
         dist = test(net, val_dataset)
         if best_val is None or dist < best_val:
-            torch.save({'net':net.state_dict(),'opt':optimizer.state_dict()}, 'best.pth')
+            torch.save(state, 'best.pth')
             best_val = dist
         # print('Distance with validation set: {:.4f}'.format(dist))
