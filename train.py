@@ -95,7 +95,8 @@ if __name__ == '__main__':
     optimizer = optim.Adam(net.parameters(), lr=args.learning_rate)
     # define datasets
     train_dataset = DatasetLucas(csv = args.train_csv, batch_size = args.batchsize, drop_last=True)
-    val_dataset = DatasetLucas(csv = args.val_csv, batch_size = args.batchsize, drop_last=False)
+    vars = train_dataset.get_vars()
+    val_dataset = DatasetLucas(csv = args.val_csv, batch_size = args.batchsize, drop_last=False, vars=vars)
     # init metric
     best_val = None
     # for each epoch

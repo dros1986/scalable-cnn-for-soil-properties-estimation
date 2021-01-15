@@ -14,7 +14,8 @@ class DatasetLucas(object):
             tgt_vars=['coarse','clay','silt','sand','pH.in.CaCl2','pH.in.H2O','OC','CaCO3','N','P','K','CEC'],
             batch_size=100,
             sep=',',
-            drop_last = True
+            drop_last = True,
+            vars = None
         ):
         # save batch size
         self.batch_size = batch_size
@@ -31,15 +32,24 @@ class DatasetLucas(object):
         self.src_x = torch.from_numpy(self.src_x)
         self.src_y = torch.from_numpy(self.src_y.to_numpy())
         # standardize all bands together
-        self.src_y_mu = self.src_y.mean()
-        self.src_y_vr = self.src_y.var()
+        if vars is None:
+            self.src_y_mu = self.src_y.mean()
+            self.src_y_vr = self.src_y.var()
+        else:
+            self.src_y_mu = vars['src_y_mu']
+            self.src_y_vr = vars['src_y_vr']
         self.src_y = (self.src_y - self.src_y_mu) / self.src_y_vr
         # get target vars
+        self.tgt_names = tgt_vars
         self.tgt_vars = df[tgt_vars].to_numpy()
         self.tgt_vars = torch.from_numpy(self.tgt_vars)
         # standardize variables independently
-        self.tgt_vars_mu = self.tgt_vars.mean(0).unsqueeze(0)
-        self.tgt_vars_vr = self.tgt_vars.var(0).unsqueeze(0)
+        if vars is None:
+            self.tgt_vars_mu = self.tgt_vars.mean(0).unsqueeze(0)
+            self.tgt_vars_vr = self.tgt_vars.var(0).unsqueeze(0)
+        else:
+            self.tgt_vars_mu = vars['tgt_vars_mu']
+            self.tgt_vars_vr = vars['tgt_vars_vr']
         self.tgt_vars = (self.tgt_vars - self.tgt_vars_mu) / self.tgt_vars_vr
         # define number of batches
         if drop_last:
@@ -52,6 +62,14 @@ class DatasetLucas(object):
         # define current batch number
         self.cur_batch = 0
 
+    def get_vars(self):
+        return {
+            'src_y_mu': self.src_y_mu,
+            'src_y_vr': self.src_y_vr,
+            'tgt_vars_mu': self.tgt_vars_mu,
+            'tgt_vars_vr': self.tgt_vars_vr,
+            'tgt_names': self.tgt_names
+        }
 
     def __iter__(self):
         return self
