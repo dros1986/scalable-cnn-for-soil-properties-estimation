@@ -93,7 +93,7 @@ class DatasetLucas(object):
 
 
 if __name__ == '__main__':
-    csv = '/home/flavio/datasets/LucasLibrary/LucasTopsoil/LUCAS.SOIL_corr_FULL.csv'
+    csv = 'data/LUCAS.SOIL_corr_FULL.csv'
     data = DatasetLucas(csv, batch_size=500)
     for cur_in, cur_gt in data:
         print(cur_in.shape)
