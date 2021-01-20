@@ -68,10 +68,6 @@ class Net(nn.Module):
 if __name__ == '__main__':
     # get arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("-r", "--regen", help="Regenerate images using the model specified.",
-    					default="")
-    parser.add_argument("-ps", "--patchsize", help="Dimension of the patch.",
-    					default=8, type=int)
     parser.add_argument("-bs", "--batchsize", help="Batch size.",
     					default=100, type=int)
     parser.add_argument("-ne", "--nepochs", help="Number of epochs.",
