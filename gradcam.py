@@ -91,6 +91,7 @@ if __name__ == '__main__':
     # define network
     net = Net()
     net.to(args.device)
+    net.eval()
     # load weights and vars
     state = torch.load(args.weights_file)
     net.load_state_dict(state['net'])
