@@ -44,7 +44,7 @@ def test(net, ds):
 
 # define network
 class Net(nn.Module):
-    def __init__(self):
+    def __init__(self, dropout=0.5):
         super(Net, self).__init__()
         self.b1 = self.block(1,16)
         self.b2 = self.block(16,32)
@@ -55,7 +55,7 @@ class Net(nn.Module):
         self.b7 = self.block(256,256)
         self.b8 = self.block(256,256)
         self.b9 = self.block(256,256)
-        self.dropout = nn.Dropout(p=0.5)
+        self.dropout = nn.Dropout(p=dropout)
         self.final = nn.Linear(2048,12)
 
 
@@ -95,6 +95,10 @@ if __name__ == '__main__':
     					default=500, type=int)
     parser.add_argument("-lr", "--learning_rate", help="Learning rate.",
     					default=1e-3, type=float)
+    parser.add_argument("-wd", "--weight_decay", help="Weight decay.",
+    					default=0, type=float)
+    parser.add_argument("-do", "--dropout", help="Dropout.",
+    					default=0, type=float)
     parser.add_argument("-dev", "--device", help="Device.",
     					default='cpu', type=str)
     parser.add_argument("-exp", "--experiment", help="Name of experiment.",
@@ -107,13 +111,13 @@ if __name__ == '__main__':
     # create output dir
     os.makedirs(args.experiment, exist_ok=True)
     # define network
-    net = Net()
+    net = Net(dropout = args.dropout)
     net.to(args.device)
     # init loss
     # loss = nn.MSELoss()
     loss = F.l1_loss
     # init optimizer
-    optimizer = optim.Adam(net.parameters(), lr=args.learning_rate)
+    optimizer = optim.Adam(net.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     # define datasets
     train_dataset = DatasetLucas(csv = args.train_csv, batch_size = args.batchsize, drop_last=True)
     vars = train_dataset.get_vars()
