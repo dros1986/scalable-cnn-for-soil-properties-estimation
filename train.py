@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from DatasetLucas import DatasetLucas
 
@@ -20,12 +21,24 @@ def test(net, ds):
         with torch.no_grad():
             out = net(src)
         # compare
-        cur_l = F.l1_loss(out,tgt).cpu()
+        # cur_l = F.l1_loss(out,tgt).cpu().unsqueeze(0)
+        cur_l = F.l1_loss(out,tgt,reduction='none').cpu()
         loss = cur_l if loss is None else torch.cat((loss,cur_l), axis=0)
     # compute average
-    loss = loss.mean()
+    var_loss = loss.mean(0)
+    tot_loss = loss.mean()
+    # fill DataFrame
+    var_names = ds.tgt_names
+    df = pd.DataFrame(columns=['variable', 'value'])
+    for (vn,vl) in zip(var_names, var_loss):
+        df = df.append({'variable': vn, 'value': vl.item()}, ignore_index=True)
+    df = df.append({'variable': 'avg', 'value': tot_loss.item()}, ignore_index=True)
+    df = df.round(4)
+    df.set_index('variable', inplace=True)
+    # net back to train
     net.train()
-    return loss
+    return df
+    # return var_loss, tot_loss
 
 
 # define network
@@ -41,17 +54,23 @@ class Net(nn.Module):
         self.b7 = self.block(256,256)
         self.b8 = self.block(256,256)
         self.b9 = self.block(256,256)
-        self.final = nn.Linear(1792,12)
+        self.dropout = nn.Dropout(p=0.5)
+        self.final = nn.Linear(2048,12)
 
 
-    def block(self, ch_in, ch_out, sz=(1,3), st=(1,2), pad=0):
+    def block(self, ch_in, ch_out, sz=(1,3), st=(1,1), pad=(0,1)):
         return nn.Sequential(
+            nn.Conv2d(ch_in, ch_in, kernel_size=(1,3), stride=1, padding=(0,1)),
+            nn.BatchNorm2d(ch_in),
+            nn.ReLU(inplace=True),
             nn.Conv2d(ch_in, ch_out, kernel_size=sz, stride=st, padding=pad),
     		nn.BatchNorm2d(ch_out),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=(1,2), stride=(1,2))
         )
 
-    def forward(self,x):
+
+    def forward(self, x):
         x = self.b1(x)
         x = self.b2(x)
         x = self.b3(x)
@@ -62,6 +81,7 @@ class Net(nn.Module):
         x = self.b8(x)
         x = self.b9(x)
         x = x.view(x.size(0),-1)
+        x = self.dropout(x)
         x = self.final(x)
         return x
 
@@ -109,16 +129,18 @@ if __name__ == '__main__':
             # apply loss
             cur_l = loss(out, tgt)
             # print
-            print('Loss = {:.4f} - Val: {:.4f}'.format(cur_l, best_val if best_val is not None else 0.0))
+            print('Loss = {:.4f} - Val: {:.4f}'.format(cur_l, best_val.loc['avg'].value if best_val is not None else 0.0))
             # backward propagation
             cur_l.backward()
             # update weights
             optimizer.step()
-        state = {'net':net.state_dict(), 'opt':optimizer.state_dict(), 'vars':vars}
+        # test on validation dataset
+        df = test(net, val_dataset)
+        print('\n',df,'\n')
+        # create state
+        state = {'net':net.state_dict(), 'opt':optimizer.state_dict(), 'vars':vars, 'res':df}
         torch.save(state, 'latest.pth')
-        # test on pignoletto dataset
-        dist = test(net, val_dataset)
-        if best_val is None or dist < best_val:
+        # update best value
+        if best_val is None or df.loc['avg'].value < best_val.loc['avg'].value:
             torch.save(state, 'best.pth')
-            best_val = dist
-        # print('Distance with validation set: {:.4f}'.format(dist))
+            best_val = df
