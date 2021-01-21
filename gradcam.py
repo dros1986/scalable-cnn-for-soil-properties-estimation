@@ -77,23 +77,23 @@ class GradCAM(object):
 if __name__ == '__main__':
     # get arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("-wf", "--weights_file", help="File containing weights.",
-                        default='best.pth', type=str)
     parser.add_argument("-ne", "--number_of_elements", help="number of elements to save.",
     					default=10, type=int)
     parser.add_argument("-dev", "--device", help="Device.",
     					default='cpu', type=str)
     parser.add_argument("-csv", "--csv", help="Lucas test csv file.",
     					default='./data/LUCAS.SOIL_corr_FULL_val.csv')
-    parser.add_argument("-out", "--out_dir", help="Output directory.",
-    					default='./gradcam')
+    parser.add_argument('-last', '--latest', action='store_true')
+    parser.add_argument("-exp", "--experiment", help="Name of experiment.",
+    					default='experiment1', type=str)
     args = parser.parse_args()
     # define network
     net = Net()
     net.to(args.device)
     net.eval()
     # load weights and vars
-    state = torch.load(args.weights_file)
+    wfn = os.path.join(args.experiment, 'latest.pth' if args.latest else 'best.pth')
+    state = torch.load(wfn)
     net.load_state_dict(state['net'])
     vars = state['vars']
     # define dataset
@@ -134,7 +134,7 @@ if __name__ == '__main__':
                 plt.title(cur_var_name)
                 plt.tight_layout()
                 figure = ax.get_figure()
-                out_fn = os.path.join(args.out_dir, cur_var_name, str(i) + '.png')
+                out_fn = os.path.join(args.experiment, 'gradcam', cur_var_name, str(i) + '.png')
                 os.makedirs(os.path.dirname(out_fn), exist_ok=True)
                 figure.savefig( out_fn, dpi=100)
                 # plt.show()

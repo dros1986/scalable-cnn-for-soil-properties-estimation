@@ -96,11 +96,15 @@ if __name__ == '__main__':
     					default=1e-3, type=float)
     parser.add_argument("-dev", "--device", help="Device.",
     					default='cpu', type=str)
+    parser.add_argument("-exp", "--experiment", help="Name of experiment.",
+    					default='experiment1', type=str)
     parser.add_argument("-tcsv", "--train_csv", help="Lucas train csv file.",
     					default='/home/flavio/datasets/LucasLibrary/LucasTopsoil/LUCAS.SOIL_corr_FULL_train.csv')
     parser.add_argument("-vcsv", "--val_csv", help="Lucas train csv file.",
     					default='/home/flavio/datasets/LucasLibrary/LucasTopsoil/LUCAS.SOIL_corr_FULL_val.csv')
     args = parser.parse_args()
+    # create output dir
+    os.makedirs(args.experiment, exist_ok=True)
     # define network
     net = Net()
     net.to(args.device)
@@ -129,7 +133,10 @@ if __name__ == '__main__':
             # apply loss
             cur_l = loss(out, tgt)
             # print
-            print('Loss = {:.4f} - Val: {:.4f}'.format(cur_l, best_val.loc['avg'].value if best_val is not None else 0.0))
+            print('[{:d}/{:d}] Loss: {:.4f} - Val: {:.4f}' \
+                .format(
+                ne, args.nepochs, cur_l,
+                best_val.loc['avg'].value if best_val is not None else 0.0))
             # backward propagation
             cur_l.backward()
             # update weights
@@ -139,8 +146,8 @@ if __name__ == '__main__':
         print('\n',df,'\n')
         # create state
         state = {'net':net.state_dict(), 'opt':optimizer.state_dict(), 'vars':vars, 'res':df}
-        torch.save(state, 'latest.pth')
+        torch.save(state, os.path.join(args.experiment,'latest.pth'))
         # update best value
         if best_val is None or df.loc['avg'].value < best_val.loc['avg'].value:
-            torch.save(state, 'best.pth')
+            torch.save(state, os.path.join(args.experiment, 'best.pth'))
             best_val = df
