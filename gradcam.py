@@ -101,7 +101,7 @@ if __name__ == '__main__':
     x = dataset.src_x.numpy()
     tgt_names = dataset.tgt_names
     # init gradcam
-    gradcam = GradCAM(net, net.b3)
+    gradcam = GradCAM(net, net.b6)
     # set colormap
     cmap = matplotlib.cm.get_cmap('YlOrRd') # Blues YlOrRd jet
     # for each element
