@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -117,6 +118,8 @@ if __name__ == '__main__':
     train_dataset = DatasetLucas(csv = args.train_csv, batch_size = args.batchsize, drop_last=True)
     vars = train_dataset.get_vars()
     val_dataset = DatasetLucas(csv = args.val_csv, batch_size = args.batchsize, drop_last=False, vars=vars)
+    # init tensorboard writer
+    writer = SummaryWriter(args.experiment)
     # init metric
     best_val = None
     # for each epoch
@@ -132,6 +135,8 @@ if __name__ == '__main__':
             out = net(src)
             # apply loss
             cur_l = loss(out, tgt)
+            # write on tensorboard
+            writer.add_scalar('loss', cur_l, (ne*train_dataset.n_batches)+i)
             # print
             print('[{:d}/{:d}] Loss: {:.4f} - Val: {:.4f}' \
                 .format(
@@ -144,6 +149,9 @@ if __name__ == '__main__':
         # test on validation dataset
         df = test(net, val_dataset)
         print('\n',df,'\n')
+        # save on tensorboard
+        for col in df.index:
+            writer.add_scalar(col, df.loc[col].value, ne)
         # create state
         state = {'net':net.state_dict(), 'opt':optimizer.state_dict(), 'vars':vars, 'res':df}
         torch.save(state, os.path.join(args.experiment,'latest.pth'))
