@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 import matplotlib
+import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
 from DatasetLucas import DatasetLucas
 import seaborn as sns
@@ -133,6 +134,9 @@ if __name__ == '__main__':
                 plt.ylim(cur_sample.min()*1.2, cur_sample.max()*1.1)
                 plt.grid()
                 plt.title(cur_var_name)
+                ax.xaxis.set_major_locator(ticker.MultipleLocator(100))
+                ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+                plt.xticks(rotation=90)
                 plt.tight_layout()
                 figure = ax.get_figure()
                 out_fn = os.path.join(args.experiment, 'gradcam', cur_var_name, str(i) + '.png')
