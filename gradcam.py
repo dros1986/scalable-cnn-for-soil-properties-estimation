@@ -102,7 +102,7 @@ if __name__ == '__main__':
     x = dataset.src_x.numpy()
     tgt_names = dataset.tgt_names
     # init gradcam
-    gradcam = GradCAM(net, net.b6)
+    gradcam = GradCAM(net, net.b4) # b6
     # set colormap
     cmap = matplotlib.cm.get_cmap('YlOrRd') # Blues YlOrRd jet
     # for each element
@@ -130,6 +130,7 @@ if __name__ == '__main__':
                 # ax = plt.scatter(x, cur_sample, s=8, c=cur_colors)
                 ax = sns.scatterplot(data=df, x='wavelength', y='signal', hue='heatmap', palette=cmap, linewidth=0) #, sizes=40)
                 # ax = sns.lineplot(data=df, x='wavelength', y='signal', hue='heatmap', palette=cmap) #, sizes=40)
+                plt.ylim(cur_sample.min()*1.2, cur_sample.max()*1.1)
                 plt.grid()
                 plt.title(cur_var_name)
                 plt.tight_layout()
