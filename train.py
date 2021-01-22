@@ -50,16 +50,21 @@ class Net(nn.Module):
         self.b2 = self.block(16,32)
         self.b3 = self.block(32,64)
         self.b4 = self.block(64,128)
-        self.b5 = self.block(128,256)
-        self.b6 = self.block(256,256)
-        self.b7 = self.block(256,256)
-        self.b8 = self.block(256,256)
-        self.b9 = self.block(256,256)
+        self.b5 = self.block(128,128)
+        self.b6 = self.block(128,128)
+        self.b7 = self.block(128,128)
+        self.b8 = self.block(128,128)
+        self.b9 = self.block(128,128)
+        self.b10 = nn.Sequential(
+            nn.Conv2d(128, 128, kernel_size=(1,4), stride=1, padding=(0,0)),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+        )
         self.dropout = nn.Dropout(p=dropout)
         self.final = nn.Sequential(
-                        nn.Linear(1024, 512),
+                        nn.Linear(128, 128),
                         nn.ReLU(inplace=True),
-                        nn.Linear(512, 12))
+                        nn.Linear(128, 12))
 
 
     def block(self, ch_in, ch_out, sz=(1,3), st=(1,1), pad=(0,0)):
@@ -84,6 +89,7 @@ class Net(nn.Module):
         x = self.b7(x)
         x = self.b8(x)
         x = self.b9(x)
+        x = self.b10(x)
         x = x.view(x.size(0),-1)
         x = self.dropout(x)
         x = self.final(x)
