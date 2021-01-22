@@ -44,7 +44,7 @@ def test(net, ds):
 
 # define network
 class Net(nn.Module):
-    def __init__(self, dropout=0.5):
+    def __init__(self, dropout=0):
         super(Net, self).__init__()
         self.b1 = self.block(1,16)
         self.b2 = self.block(16,32)
@@ -56,12 +56,15 @@ class Net(nn.Module):
         self.b8 = self.block(256,256)
         self.b9 = self.block(256,256)
         self.dropout = nn.Dropout(p=dropout)
-        self.final = nn.Linear(2048,12)
+        self.final = nn.Sequential(
+                        nn.Linear(1024, 512),
+                        nn.ReLU(inplace=True),
+                        nn.Linear(512, 12))
 
 
-    def block(self, ch_in, ch_out, sz=(1,3), st=(1,1), pad=(0,1)):
+    def block(self, ch_in, ch_out, sz=(1,3), st=(1,1), pad=(0,0)):
         return nn.Sequential(
-            nn.Conv2d(ch_in, ch_in, kernel_size=(1,3), stride=1, padding=(0,1)),
+            nn.Conv2d(ch_in, ch_in, kernel_size=(1,3), stride=1, padding=(0,0)),
             nn.BatchNorm2d(ch_in),
             nn.ReLU(inplace=True),
             nn.Conv2d(ch_in, ch_out, kernel_size=sz, stride=st, padding=pad),
