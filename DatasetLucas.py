@@ -31,14 +31,20 @@ class DatasetLucas(object):
         self.src_y = df[self.src_cols]
         self.src_x = torch.from_numpy(self.src_x)
         self.src_y = torch.from_numpy(self.src_y.to_numpy())
+        # # standardize all bands together
+        # if vars is None:
+        #     self.src_y_mu = self.src_y.mean()
+        #     self.src_y_vr = self.src_y.var()
+        # else:
+        #     self.src_y_mu = vars['src_y_mu']
+        #     self.src_y_vr = vars['src_y_vr']
+        # self.src_y = (self.src_y - self.src_y_mu) / self.src_y_vr
         # standardize all bands together
-        if vars is None:
-            self.src_y_mu = self.src_y.mean()
-            self.src_y_vr = self.src_y.var()
-        else:
-            self.src_y_mu = vars['src_y_mu']
-            self.src_y_vr = vars['src_y_vr']
+        self.src_y_mu = self.src_y.mean(1).unsqueeze(1)
+        self.src_y_vr = self.src_y.std(1).unsqueeze(1)
         self.src_y = (self.src_y - self.src_y_mu) / self.src_y_vr
+        # # normalize vars along band
+        # self.src_y = self.src_y / self.src_y.sum(1).unsqueeze(1)
         # get target vars
         self.tgt_names = tgt_vars
         self.tgt_vars = df[tgt_vars].to_numpy()
@@ -64,8 +70,8 @@ class DatasetLucas(object):
 
     def get_vars(self):
         return {
-            'src_y_mu': self.src_y_mu,
-            'src_y_vr': self.src_y_vr,
+            # 'src_y_mu': self.src_y_mu,
+            # 'src_y_vr': self.src_y_vr,
             'tgt_vars_mu': self.tgt_vars_mu,
             'tgt_vars_vr': self.tgt_vars_vr,
             'tgt_names': self.tgt_names
