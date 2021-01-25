@@ -116,8 +116,8 @@ class Net(nn.Module):
         )
         self.dropout = nn.Dropout(p=dropout)
         self.final = nn.Sequential(
-                        nn.Linear(128, 128),
-                        nn.ReLU(inplace=True),
+                        # nn.Linear(128, 128),
+                        # nn.ReLU(inplace=True),
                         nn.Linear(128, 12))
 
 
