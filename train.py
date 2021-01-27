@@ -112,7 +112,7 @@ class Net(nn.Module):
         self.b10 = self.block(64,64)
         self.b11 = nn.Sequential(
             nn.Conv2d(64, 64, kernel_size=(1,2), stride=1, padding=(0,0)),
-            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(64, momentum=0.01),
             nn.ReLU(inplace=True),
         )
         self.dropout = nn.Dropout(p=dropout)
@@ -128,7 +128,7 @@ class Net(nn.Module):
             # nn.BatchNorm2d(ch_in),
             # nn.ReLU(inplace=True),
             nn.Conv2d(ch_in, ch_out, kernel_size=sz, stride=st, padding=pad),
-    		nn.BatchNorm2d(ch_out),
+    		nn.BatchNorm2d(ch_out, momentum=0.01),
             nn.ReLU(inplace=True),
             # nn.MaxPool2d(kernel_size=(1,2), stride=(1,2))
             nn.AvgPool2d(kernel_size=(1,2), stride=(1,2))
@@ -215,6 +215,8 @@ if __name__ == '__main__':
     					default=0, type=float)
     parser.add_argument("-do", "--dropout", help="Dropout.",
     					default=0, type=float)
+    parser.add_argument("-norm", "--norm_type", help="Normalization used in nir/swir.",
+                        default='std_instance', type=str)
     parser.add_argument("-dev", "--device", help="Device.",
     					default='cpu', type=str)
     parser.add_argument("-exp", "--experiment", help="Name of experiment.",
@@ -235,9 +237,11 @@ if __name__ == '__main__':
     # init optimizer
     optimizer = optim.Adam(net.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     # define datasets
-    train_dataset = DatasetLucas(csv = args.train_csv, batch_size = args.batchsize, drop_last=True)
+    train_dataset = DatasetLucas(csv = args.train_csv, batch_size = args.batchsize, norm_type = args.norm_type, \
+                                drop_last=True)
     vars = train_dataset.get_vars()
-    val_dataset = DatasetLucas(csv = args.val_csv, batch_size = args.batchsize, drop_last=False, vars=vars)
+    val_dataset = DatasetLucas(csv = args.val_csv, batch_size = args.batchsize, norm_type = args.norm_type, \
+                                drop_last=False, vars=vars)
     # init tensorboard writer
     writer = SummaryWriter(args.experiment)
     # init metric
@@ -279,3 +283,5 @@ if __name__ == '__main__':
         if best_val is None or df.loc['avg'].value < best_val.loc['avg'].value:
             torch.save(state, os.path.join(args.experiment, 'best.pth'))
             best_val = df
+        # save the best value obtained on tensorboard
+        writer.add_scalar('best', best_val.loc['avg'].value, ne)

@@ -82,6 +82,8 @@ if __name__ == '__main__':
     					default=10, type=int)
     parser.add_argument("-dev", "--device", help="Device.",
     					default='cpu', type=str)
+    parser.add_argument("-norm", "--norm_type", help="Normalization used in nir/swir.",
+                        default='std_instance', type=str)
     parser.add_argument("-csv", "--csv", help="Lucas test csv file.",
     					default='./data/LUCAS.SOIL_corr_FULL_val.csv')
     parser.add_argument('-last', '--latest', action='store_true')
@@ -98,7 +100,8 @@ if __name__ == '__main__':
     net.load_state_dict(state['net'])
     vars = state['vars']
     # define dataset
-    dataset = DatasetLucas(csv = args.csv, batch_size = args.number_of_elements, drop_last=False, vars=vars)
+    dataset = DatasetLucas(csv = args.csv, batch_size = args.number_of_elements, norm_type = args.norm_type, \
+                            drop_last=False, vars=vars)
     # get x
     x = dataset.src_x.numpy()
     tgt_names = dataset.tgt_names

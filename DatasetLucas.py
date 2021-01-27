@@ -13,12 +13,15 @@ class DatasetLucas(object):
             src_prefix='spc.',
             tgt_vars=['coarse','clay','silt','sand','pH.in.CaCl2','pH.in.H2O','OC','CaCO3','N','P','K','CEC'],
             batch_size=100,
+            norm_type = 'std_instance',
             sep=',',
             drop_last = True,
             vars = None
         ):
         # save batch size
         self.batch_size = batch_size
+        # save vars
+        self.vars = vars if vars is not None else {}
         # read csv files
         df = pd.read_table(csv, sep=sep)
         # get source variables
@@ -31,32 +34,14 @@ class DatasetLucas(object):
         self.src_y = df[self.src_cols]
         self.src_x = torch.from_numpy(self.src_x)
         self.src_y = torch.from_numpy(self.src_y.to_numpy())
-        # # standardize all bands together
-        # if vars is None:
-        #     self.src_y_mu = self.src_y.mean()
-        #     self.src_y_vr = self.src_y.var()
-        # else:
-        #     self.src_y_mu = vars['src_y_mu']
-        #     self.src_y_vr = vars['src_y_vr']
-        # self.src_y = (self.src_y - self.src_y_mu) / self.src_y_vr
-        # standardize all bands together
-        self.src_y_mu = self.src_y.mean(1).unsqueeze(1)
-        self.src_y_vr = self.src_y.std(1).unsqueeze(1)
-        self.src_y = (self.src_y - self.src_y_mu) / self.src_y_vr
-        # # normalize vars along band
-        # self.src_y = self.src_y / self.src_y.sum(1).unsqueeze(1)
+        # standardize nir/swir
+        self.std_inplace(norm_type, data_attr='src_y', mu_key='src_y_mu', vr_key='src_y_vr')
         # get target vars
         self.tgt_names = tgt_vars
         self.tgt_vars = df[tgt_vars].to_numpy()
         self.tgt_vars = torch.from_numpy(self.tgt_vars)
         # standardize variables independently
-        if vars is None:
-            self.tgt_vars_mu = self.tgt_vars.mean(0).unsqueeze(0)
-            self.tgt_vars_vr = self.tgt_vars.var(0).unsqueeze(0)
-        else:
-            self.tgt_vars_mu = vars['tgt_vars_mu']
-            self.tgt_vars_vr = vars['tgt_vars_vr']
-        self.tgt_vars = (self.tgt_vars - self.tgt_vars_mu) / self.tgt_vars_vr
+        self.std_inplace('std_var', data_attr='tgt_vars', mu_key='tgt_vars_mu', vr_key='tgt_vars_vr')
         # define number of batches
         if drop_last:
             self.n_batches = self.tgt_vars.size(0) // self.batch_size
@@ -68,14 +53,51 @@ class DatasetLucas(object):
         # define current batch number
         self.cur_batch = 0
 
+
+    def std_inplace(self, std_type, data_attr='src_ir', mu_key='src_y_mu', vr_key='src_y_vr'):
+        # retrieve mean and variance
+        if mu_key in self.vars and vr_key in self.vars:
+            mu = self.vars[mu_key]
+            vr = self.vars[vr_key]
+        else:
+            mu = None
+            vr = None
+        # compute standardization
+        feats = eval('self.'+data_attr)
+        std_func = eval('self.'+std_type)
+        feats, mu, vr = std_func(feats, mu, vr)
+        # reassign values inplace
+        exec('self.{} = feats'.format(data_attr))
+        self.vars[mu_key] = mu
+        self.vars[vr_key] = vr
+
+
+    def std_instance(self, feats, mu = None, vr = None):
+        if mu == None or vr == None:
+            mu = feats.mean(1).unsqueeze(1)
+            vr = feats.std(1).unsqueeze(1)
+        return self.std_formula(feats, mu, vr)
+
+
+    def std_global(self, feats, mu = None, vr = None):
+        if mu == None or vr == None:
+            mu = feats.mean()
+            vr = feats.std()
+        return self.std_formula(feats, mu, vr)
+
+
+    def std_var(self, feats, mu = None, vr = None):
+        mu = feats.mean(0).unsqueeze(0)
+        vr = feats.std(0).unsqueeze(0)
+        return self.std_formula(feats, mu, vr)
+
+
+    def std_formula(self, feats, mu, vr):
+        feats = (feats - mu) / vr
+        return feats, mu, vr
+
     def get_vars(self):
-        return {
-            # 'src_y_mu': self.src_y_mu,
-            # 'src_y_vr': self.src_y_vr,
-            'tgt_vars_mu': self.tgt_vars_mu,
-            'tgt_vars_vr': self.tgt_vars_vr,
-            'tgt_names': self.tgt_names
-        }
+        return self.vars
 
     def __iter__(self):
         return self

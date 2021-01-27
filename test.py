@@ -52,6 +52,8 @@ if __name__ == '__main__':
     parser.add_argument("-exp", "--experiment", help="Name of experiment.",
     					default='experiment1', type=str)
     parser.add_argument('-last', '--latest', action='store_true')
+    parser.add_argument("-norm", "--norm_type", help="Normalization used in nir/swir.",
+                        default='std_instance', type=str)
     parser.add_argument("-csv", "--csv", help="Lucas train csv file.",
     					default='/home/flavio/datasets/LucasLibrary/LucasTopsoil/LUCAS.SOIL_corr_FULL_val.csv')
     args = parser.parse_args()
@@ -67,7 +69,8 @@ if __name__ == '__main__':
     net.load_state_dict(state['net'])
     vars = state['vars']
     # define datasets
-    test_dataset = DatasetLucas(csv = args.csv, batch_size = args.batchsize, drop_last=False, vars=vars)
+    test_dataset = DatasetLucas(csv = args.csv, batch_size = args.batchsize, norm_type = args.norm_type, \
+                                drop_last=False, vars=vars)
     # test on test dataset
     df = test(net, test_dataset)
     print('\n',df,'\n')
