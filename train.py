@@ -109,8 +109,9 @@ class Net(nn.Module):
         self.b7 = self.block(64,64)
         self.b8 = self.block(64,64)
         self.b9 = self.block(64,64)
-        self.b10 = nn.Sequential(
-            nn.Conv2d(64, 64, kernel_size=(1,4), stride=1, padding=(0,0)),
+        self.b10 = self.block(64,64)
+        self.b11 = nn.Sequential(
+            nn.Conv2d(64, 64, kernel_size=(1,2), stride=1, padding=(0,0)),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
         )
@@ -123,9 +124,9 @@ class Net(nn.Module):
 
     def block(self, ch_in, ch_out, sz=(1,3), st=(1,1), pad=(0,0)):
         return nn.Sequential(
-            nn.Conv2d(ch_in, ch_in, kernel_size=(1,3), stride=1, padding=(0,0)),
-            nn.BatchNorm2d(ch_in),
-            nn.ReLU(inplace=True),
+            # nn.Conv2d(ch_in, ch_in, kernel_size=(1,3), stride=1, padding=(0,0)),
+            # nn.BatchNorm2d(ch_in),
+            # nn.ReLU(inplace=True),
             nn.Conv2d(ch_in, ch_out, kernel_size=sz, stride=st, padding=pad),
     		nn.BatchNorm2d(ch_out),
             nn.ReLU(inplace=True),
@@ -145,6 +146,7 @@ class Net(nn.Module):
         x = self.b8(x)
         x = self.b9(x)
         x = self.b10(x)
+        x = self.b11(x)
         x = x.view(x.size(0),-1)
         # x = self.dropout(x)
         x = self.final(x)
