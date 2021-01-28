@@ -75,21 +75,21 @@ class DatasetLucas(object):
 
     def std_instance(self, feats, mu = None, vr = None):
         mu = feats.mean(1).unsqueeze(1)
-        vr = feats.std(1).unsqueeze(1)
+        vr = feats.var(1).unsqueeze(1)
         return self.std_formula(feats, mu, vr)
 
 
     def std_global(self, feats, mu = None, vr = None):
         if mu == None or vr == None:
             mu = feats.mean()
-            vr = feats.std()
+            vr = feats.var()
         return self.std_formula(feats, mu, vr)
 
 
     def std_var(self, feats, mu = None, vr = None):
         if mu == None or vr == None:
             mu = feats.mean(0).unsqueeze(0)
-            vr = feats.std(0).unsqueeze(0)
+            vr = feats.var(0).unsqueeze(0)
         return self.std_formula(feats, mu, vr)
 
 
