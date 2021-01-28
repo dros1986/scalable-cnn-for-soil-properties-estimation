@@ -38,6 +38,7 @@ class DatasetLucas(object):
         self.std_inplace(norm_type, data_attr='src_y', mu_key='src_y_mu', vr_key='src_y_vr')
         # get target vars
         self.tgt_names = tgt_vars
+        self.vars['tgt_names'] = self.tgt_names
         self.tgt_vars = df[tgt_vars].to_numpy()
         self.tgt_vars = torch.from_numpy(self.tgt_vars)
         # standardize variables independently
@@ -73,9 +74,8 @@ class DatasetLucas(object):
 
 
     def std_instance(self, feats, mu = None, vr = None):
-        if mu == None or vr == None:
-            mu = feats.mean(1).unsqueeze(1)
-            vr = feats.std(1).unsqueeze(1)
+        mu = feats.mean(1).unsqueeze(1)
+        vr = feats.std(1).unsqueeze(1)
         return self.std_formula(feats, mu, vr)
 
 
@@ -87,8 +87,9 @@ class DatasetLucas(object):
 
 
     def std_var(self, feats, mu = None, vr = None):
-        mu = feats.mean(0).unsqueeze(0)
-        vr = feats.std(0).unsqueeze(0)
+        if mu == None or vr == None:
+            mu = feats.mean(0).unsqueeze(0)
+            vr = feats.std(0).unsqueeze(0)
         return self.std_formula(feats, mu, vr)
 
 
