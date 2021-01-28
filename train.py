@@ -98,8 +98,9 @@ def test(net, ds):
 
 # define network
 class Net(nn.Module):
-    def __init__(self, dropout=0):
+    def __init__(self, dropout=0, momentum=0.01):
         super(Net, self).__init__()
+        self.momentum = momentum
         self.b1 = self.block(1,8)
         self.b2 = self.block(8,16)
         self.b3 = self.block(16,16)
@@ -112,7 +113,7 @@ class Net(nn.Module):
         self.b10 = self.block(64,64)
         self.b11 = nn.Sequential(
             nn.Conv2d(64, 64, kernel_size=(1,2), stride=1, padding=(0,0)),
-            nn.BatchNorm2d(64, momentum=0.01),
+            nn.BatchNorm2d(64, momentum=self.momentum),
             nn.ReLU(inplace=True),
         )
         self.dropout = nn.Dropout(p=dropout)
@@ -128,7 +129,7 @@ class Net(nn.Module):
             # nn.BatchNorm2d(ch_in),
             # nn.ReLU(inplace=True),
             nn.Conv2d(ch_in, ch_out, kernel_size=sz, stride=st, padding=pad),
-    		nn.BatchNorm2d(ch_out, momentum=0.01),
+    		nn.BatchNorm2d(ch_out, momentum=self.momentum),
             nn.ReLU(inplace=True),
             # nn.MaxPool2d(kernel_size=(1,2), stride=(1,2))
             nn.AvgPool2d(kernel_size=(1,2), stride=(1,2))
@@ -215,10 +216,14 @@ if __name__ == '__main__':
     					default=0, type=float)
     parser.add_argument("-do", "--dropout", help="Dropout.",
     					default=0, type=float)
+    parser.add_argument("-mom", "--momentum", help="Batchnorm momentum.",
+    					default=0.01, type=float)
     parser.add_argument("-norm", "--norm_type", help="Normalization used in nir/swir.",
                         default='std_instance', type=str)
     parser.add_argument("-dev", "--device", help="Device.",
     					default='cpu', type=str)
+    parser.add_argument("-loss", "--loss", help="Loss function.",
+    					default='l1', type=str)
     parser.add_argument("-exp", "--experiment", help="Name of experiment.",
     					default='experiment1', type=str)
     parser.add_argument("-tcsv", "--train_csv", help="Lucas train csv file.",
@@ -229,11 +234,13 @@ if __name__ == '__main__':
     # create output dir
     os.makedirs(args.experiment, exist_ok=True)
     # define network
-    net = Net(dropout = args.dropout)
+    net = Net(dropout = args.dropout, momentum = args.momentum)
     net.to(args.device)
     # init loss
-    # loss = nn.MSELoss()
-    loss = F.l1_loss
+    if args.loss == 'l1':
+        loss = F.l1_loss
+    elif args.loss == 'l2' or args.loss == 'mse':
+        loss = F.mse_loss
     # init optimizer
     optimizer = optim.Adam(net.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     # define datasets
