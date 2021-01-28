@@ -13,7 +13,7 @@ import seaborn as sns
 import pandas as pd
 from tqdm import tqdm
 sns.set_style("dark")
-from train import Net
+from networks import Net
 
 
 class GradCAM(object):

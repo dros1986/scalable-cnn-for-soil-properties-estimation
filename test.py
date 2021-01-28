@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from DatasetLucas import DatasetLucas
-from train import Net
+from networks import Net
 
 # define test procedure
 def test(net, ds):
