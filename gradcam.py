@@ -51,9 +51,10 @@ class GradCAM(object):
             # out[:,i].mean().backward(retain_graph=True)
             out[:,i].backward(torch.ones_like(out[:,i]), retain_graph=True)
             # pool gradients
-            pooled_gradients = torch.mean(self.gradients, dim=[2, 3])
+            # pooled_gradients = torch.mean(self.gradients, dim=[2, 3])
+            pooled_gradients = torch.mean(self.gradients, dim=[2])
             # weight activations
-            cur_activations = self.activations*pooled_gradients.unsqueeze(-1).unsqueeze(-1)
+            cur_activations = self.activations*pooled_gradients.unsqueeze(-1) #.unsqueeze(-1)
             # average the channels of the activations
             # cur_heatmap = torch.mean(cur_activations, dim=1).squeeze()
             cur_heatmap = torch.mean(cur_activations, dim=1).unsqueeze(1)
@@ -61,10 +62,14 @@ class GradCAM(object):
             # expression (2) in https://arxiv.org/pdf/1610.02391.pdf
             cur_heatmap = torch.relu(cur_heatmap).detach()
             # normalize the cur_heatmap
-            cur_heatmap = (cur_heatmap - cur_heatmap.min(3).values.unsqueeze(3)) / \
-                        (cur_heatmap.max(3).values.unsqueeze(3) - cur_heatmap.min(3).values.unsqueeze(3))
+            cur_heatmap = (cur_heatmap - cur_heatmap.min(2).values.unsqueeze(2)) / \
+                        (cur_heatmap.max(2).values.unsqueeze(2) - cur_heatmap.min(2).values.unsqueeze(2))
+            cur_heatmap = F.interpolate(cur_heatmap.unsqueeze(2), size=(inp.size(2),inp.size(3)), \
+                            mode='bilinear', align_corners=True)
+            # cur_heatmap = (cur_heatmap - cur_heatmap.min(3).values.unsqueeze(3)) / \
+            #             (cur_heatmap.max(3).values.unsqueeze(3) - cur_heatmap.min(3).values.unsqueeze(3))
             # interpolate to match size of input signal
-            cur_heatmap = F.interpolate(cur_heatmap, size=(inp.size(2),inp.size(3)), mode='bilinear', align_corners=True)
+            # cur_heatmap = F.interpolate(cur_heatmap, size=(inp.size(2),inp.size(3)), mode='bilinear', align_corners=True)
             # remove unuseful dimensions
             cur_heatmap = cur_heatmap.squeeze(1).squeeze(1).detach()
             # append
@@ -82,6 +87,22 @@ if __name__ == '__main__':
     					default=10, type=int)
     parser.add_argument("-dev", "--device", help="Device.",
     					default='cpu', type=str)
+    # network
+    parser.add_argument("-powf", "--powf", help="Power of 2 of filters.",
+    					default=3, type=int)
+    parser.add_argument("-max_powf", "--max_powf", help="Max power of 2 of filters.",
+    					default=8, type=int)
+    parser.add_argument("-insz", "--insz", help="Input size.",
+    					default=1024, type=int)
+    parser.add_argument("-minsz", "--minsz", help="Min size.",
+    					default=8, type=int)
+    parser.add_argument("-nbsr", "--nbsr", help="Number of blocks same resolution.",
+    					default=1, type=int)
+    parser.add_argument("-leak", "--leak", help="Leak of relu. If 0, normal relu.",
+    					default=0, type=float)
+    parser.add_argument("-mom", "--momentum", help="Batchnorm momentum.",
+    					default=0.01, type=float)
+    # csv and data
     parser.add_argument("-norm", "--norm_type", help="Normalization used in nir/swir.",
                         default='std_instance', type=str)
     parser.add_argument("-csv", "--csv", help="Lucas test csv file.",
@@ -91,7 +112,8 @@ if __name__ == '__main__':
     					default='experiment1', type=str)
     args = parser.parse_args()
     # define network
-    net = Net()
+    net = Net(nemb=12, nch=1, powf=args.powf, max_powf=args.max_powf, insz=args.insz, minsz=args.minsz, \
+            nbsr=args.nbsr, leak=args.leak, batch_momentum=args.momentum)
     net.to(args.device)
     net.eval()
     # load weights and vars
@@ -106,7 +128,7 @@ if __name__ == '__main__':
     x = dataset.src_x.numpy()
     tgt_names = dataset.tgt_names
     # init gradcam
-    gradcam = GradCAM(net, net.b4) # b6
+    gradcam = GradCAM(net, net.down[8]) #net.b4) # b6
     # set colormap
     cmap = matplotlib.cm.get_cmap('YlOrRd') # Blues YlOrRd jet
     # for each element
