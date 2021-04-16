@@ -10,39 +10,32 @@ from scipy import signal
 class DatasetLucas(object):
     def __init__(self,
             csv,
+            src_norm,
+            tgt_norm,
+            tgt_quant,
             src_prefix='spc.',
             tgt_vars=['coarse','clay','silt','sand','pH.in.CaCl2','pH.in.H2O','OC','CaCO3','N','P','K','CEC'],
             batch_size=100,
-            norm_type = 'std_instance',
             sep=',',
-            drop_last = True,
-            vars = None
+            drop_last = True
         ):
-        # save batch size
+        # save attributes
+        self.src_norm = src_norm
+        self.tgt_norm = tgt_norm
+        self.tgt_quant = tgt_quant
         self.batch_size = batch_size
-        # save vars
-        self.vars = vars if vars is not None else {}
         # read csv files
         df = pd.read_table(csv, sep=sep)
-        # get source variables
-        src_cols = [col for col in df.columns if col.startswith(src_prefix)]
-        x = np.array([float(col[len(src_prefix):]) for col in src_cols])
-        # sort in increasing order
-        pos = np.argsort(x)
-        self.src_cols = [src_cols[cur_pos] for cur_pos in pos]
-        self.src_x = x[pos]
-        self.src_y = df[self.src_cols]
-        self.src_x = torch.from_numpy(self.src_x)
-        self.src_y = torch.from_numpy(self.src_y.to_numpy())
-        # standardize nir/swir
-        self.std_inplace(norm_type, data_attr='src_y', mu_key='src_y_mu', vr_key='src_y_vr')
-        # get target vars
-        self.tgt_names = tgt_vars
-        self.vars['tgt_names'] = self.tgt_names
-        self.tgt_vars = df[tgt_vars].to_numpy()
-        self.tgt_vars = torch.from_numpy(self.tgt_vars)
-        # standardize variables independently
-        self.std_inplace('std_var', data_attr='tgt_vars', mu_key='tgt_vars_mu', vr_key='tgt_vars_vr')
+        # get source and target variables
+        self.src_cols, self.src_x, self.src_y = self.get_src(df, src_prefix)
+        self.tgt_vars = self.get_tgt(df, tgt_vars)
+        # check size
+        assert(self.src_y.shape[0] == self.tgt_vars.shape[0])
+        # normalize source and target variables
+        self.src_y = self.src_norm.normalize(self.src_y)
+        self.tgt_vars = self.tgt_norm.normalize(self.tgt_vars)
+        # quantize target variables
+        self.tgt_bins, self.tgt_regs = self.tgt_quant.quantize(self.tgt_vars)
         # define number of batches
         if drop_last:
             self.n_batches = self.tgt_vars.size(0) // self.batch_size
@@ -55,50 +48,33 @@ class DatasetLucas(object):
         self.cur_batch = 0
 
 
-    def std_inplace(self, std_type, data_attr='src_ir', mu_key='src_y_mu', vr_key='src_y_vr'):
-        # retrieve mean and variance
-        if mu_key in self.vars and vr_key in self.vars:
-            mu = self.vars[mu_key]
-            vr = self.vars[vr_key]
-        else:
-            mu = None
-            vr = None
-        # compute standardization
-        feats = eval('self.'+data_attr)
-        std_func = eval('self.'+std_type)
-        feats, mu, vr = std_func(feats, mu, vr)
-        # reassign values inplace
-        exec('self.{} = feats'.format(data_attr))
-        self.vars[mu_key] = mu
-        self.vars[vr_key] = vr
+    def get_src(self, df, src_prefix):
+        ''' gets infrared signals using cols starting with src_prefix '''
+        # get x points
+        src_cols = [col for col in df.columns if col.startswith(src_prefix)]
+        x = np.array([float(col[len(src_prefix):]) for col in src_cols])
+        # sort x points in increasing order
+        pos = np.argsort(x)
+        src_cols = [src_cols[cur_pos] for cur_pos in pos]
+        # extract x and y values
+        src_x = x[pos]
+        src_y = df[src_cols].to_numpy()
+        # convert to tensor
+        src_x = torch.from_numpy(src_x).float()
+        src_y = torch.from_numpy(src_y).float()
+        # return
+        return src_cols, src_x, src_y
 
 
-    def std_instance(self, feats, mu = None, vr = None):
-        mu = feats.mean(1).unsqueeze(1)
-        vr = feats.var(1).unsqueeze(1)
-        return self.std_formula(feats, mu, vr)
+    def get_tgt(self, df, tgt_vars):
+        ''' gets target variables using specified columns '''
+        # extract variables
+        tgt_vars = df[tgt_vars].to_numpy()
+        # convert to torch
+        tgt_vars = torch.from_numpy(tgt_vars).float()
+        # return them
+        return tgt_vars
 
-
-    def std_global(self, feats, mu = None, vr = None):
-        if mu == None or vr == None:
-            mu = feats.mean()
-            vr = feats.var()
-        return self.std_formula(feats, mu, vr)
-
-
-    def std_var(self, feats, mu = None, vr = None):
-        if mu == None or vr == None:
-            mu = feats.mean(0).unsqueeze(0)
-            vr = feats.var(0).unsqueeze(0)
-        return self.std_formula(feats, mu, vr)
-
-
-    def std_formula(self, feats, mu, vr):
-        feats = (feats - mu) / vr
-        return feats, mu, vr
-
-    def get_vars(self):
-        return self.vars
 
     def __iter__(self):
         return self
@@ -115,15 +91,30 @@ class DatasetLucas(object):
             self.cur_batch += 1
             src_y = self.src_y[ids].unsqueeze(1).unsqueeze(1).float()
             tgt = self.tgt_vars[ids].float()
-            return src_y, tgt
+            bins = self.tgt_bins[ids]
+            regs = self.tgt_regs[ids]
+            return src_y, tgt, bins, regs
 
     def __len__(self):
         return self.n_batches
 
 
 if __name__ == '__main__':
-    csv = 'data/LUCAS.SOIL_corr_FULL.csv'
-    data = DatasetLucas(csv, batch_size=500)
-    for cur_in, cur_gt in data:
+    # import only for testing
+    from Normalization import InstanceStandardization, VariableStandardization
+    from Quantizer import Quantizer
+    # instantiate normalizer and quantizer
+    src_norm = InstanceStandardization()
+    tgt_norm = VariableStandardization()
+    quant = Quantizer(nbins=10)
+    # instantiate dataset
+    csv = 'data/LUCAS.SOIL_corr_FULL_val.csv'
+    data = DatasetLucas(csv, src_norm, tgt_norm, quant, batch_size=500)
+    boh = DatasetLucas(csv, src_norm, tgt_norm, quant, batch_size=500)
+    # check
+    for cur_in, cur_gt, cur_bin, cur_reg in data:
         print(cur_in.shape)
         print(cur_gt.shape)
+        print(cur_bin.shape)
+        print(cur_reg.shape)
+        break
