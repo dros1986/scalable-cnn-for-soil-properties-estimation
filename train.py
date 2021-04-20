@@ -97,6 +97,8 @@ if __name__ == '__main__':
     args = parse_train_arguments()
     # create output dir
     os.makedirs(args.experiment, exist_ok=True)
+    os.makedirs(os.path.join(args.experiment, 'checkpoints'), exist_ok=True)
+    os.makedirs(os.path.join(args.experiment, 'logs'), exist_ok=True)
     # define network
     net = Net(nemb=12, nch=1, powf=args.powf, max_powf=args.max_powf, insz=args.insz, \
             minsz=args.minsz, nbsr=args.nbsr, leak=args.leak, batch_momentum=args.momentum)
@@ -106,6 +108,16 @@ if __name__ == '__main__':
                         weight_decay=args.weight_decay)
     # init loss and metric
     metric_fun, loss_fun = get_metric_and_loss(args.loss)
+    # load from checkpoint if required
+    if args.start_from >= 0:
+        state = os.path.join(args.experiment,'{:d}.pth'.format(args.start_from))
+        net.load_state_dict(state['net'])
+        opt.load_state_dict(state['opt'])
+        best_val = state['best_val']
+        start_epoch = state['epoch'] + 1
+    else:
+        best_val = None
+        start_epoch = 0
     # create normalization objects
     src_norm = InstanceStandardization()
     tgt_norm = VariableStandardization()
@@ -119,19 +131,24 @@ if __name__ == '__main__':
                             src_prefix=args.src_prefix, tgt_vars=args.tgt_vars, \
                             batch_size=args.batchsize, drop_last=False)
     # init tensorboard writer
-    writer = SummaryWriter(args.experiment)
+    writer = SummaryWriter(os.path.join(args.experiment,'logs'))
     # write args in tensorboard
     arg_dict = vars(args)
     text = ''.join([key + ': ' + str(arg_dict[key]) + '  \n' for key in arg_dict])
     writer.add_text('parameters', text, global_step=0)
-    # init metric
-    best_val = None
     # for each epoch
-    for ne in range(args.nepochs):
+    for ne in range(start_epoch, args.nepochs):
         train(args, net, optimizer, train_dataset, loss_fun, writer, ne, best_val)
         # test on validation dataset
         df, loss = test(args, net, valid_dataset)
         print('\n',df,'\n')
+        # check if it is the best
+        if best_val is None or df.loc['avg'].value < best_val.loc['avg'].value:
+            best_val = df
+            writer.add_scalar('best', best_val.loc['avg'].value, ne)
+            isbest = True
+        else:
+            isbest = False
         # save on tensorboard
         for col in df.index:
             writer.add_scalar(col, df.loc[col].value, ne)
@@ -140,10 +157,10 @@ if __name__ == '__main__':
                     'opt':optimizer.state_dict(),
                     'tgt_norm': tgt_norm.get_state(),
                     'tgt_quant': tgt_quant.get_state(),
-                    'res':df}
-        torch.save(state, os.path.join(args.experiment,'{:d}.pth'.format(ne)))
-        # check if it is the best
-        if best_val is None or df.loc['avg'].value < best_val.loc['avg'].value:
-            best_val = df
-            writer.add_scalar('best', best_val.loc['avg'].value, ne)
-            torch.save(state, os.path.join(args.experiment,'best.pth'))
+                    'best_val': best_val,
+                    'res':df,
+                    'epoch':ne}
+        torch.save(state, os.path.join(args.experiment, 'checkpoints','{:d}.pth'.format(ne)))
+        # if it is the best, save it
+        if isbest:
+            torch.save(state, os.path.join(args.experiment, 'checkpoints', 'best.pth'))
