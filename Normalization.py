@@ -11,6 +11,11 @@ class InstanceStandardization(object):
         vr = feats.var(1).unsqueeze(1)
         return (feats - mu) / vr
 
+    def invert(self, feats):
+        mu = feats.mean(1).unsqueeze(1)
+        vr = feats.var(1).unsqueeze(1)
+        return feats*vr + mu
+
     def get_state(self): return {}
     def set_state(self, state): return
 
@@ -26,6 +31,9 @@ class GlobalStandardization(object):
             self.mu = feats.mean()
             self.vr = feats.var()
         return (feats - self.mu) / self.vr
+
+    def invert(self, feats):
+        return feats*self.vr + self.mu
 
     def get_state(self):
         return {'mu':self.mu, 'vr':self.vr}
@@ -46,6 +54,9 @@ class VariableStandardization(object):
             self.mu = feats.mean(0).unsqueeze(0)
             self.vr = feats.var(0).unsqueeze(0)
         return (feats - self.mu) / self.vr
+
+    def invert(self, feats):
+        return feats*self.vr + self.mu
 
     def get_state(self):
         return {'mu':self.mu, 'vr':self.vr}
