@@ -17,13 +17,15 @@ class DatasetLucas(object):
             tgt_vars=['coarse','clay','silt','sand','pH.in.CaCl2','pH.in.H2O','OC','CaCO3','N','P','K','CEC'],
             batch_size=100,
             sep=',',
-            drop_last = True
+            drop_last = True,
+            shuffle = True,
         ):
         # save attributes
         self.src_norm = src_norm
         self.tgt_norm = tgt_norm
         self.tgt_quant = tgt_quant
         self.batch_size = batch_size
+        self.shuffle = shuffle
         # read csv files
         df = pd.read_table(csv, sep=sep)
         # get source and target variables
@@ -43,7 +45,8 @@ class DatasetLucas(object):
             self.n_batches = math.ceil(self.tgt_vars.size(0) / self.batch_size)
         # define random sequence
         self.seq = list(range(self.tgt_vars.shape[0]))
-        random.shuffle(self.seq)
+        if self.shuffle:
+            random.shuffle(self.seq)
         # define current batch number
         self.cur_batch = 0
 
@@ -82,7 +85,8 @@ class DatasetLucas(object):
     def __next__(self):
         if not self.cur_batch < self.n_batches:
             self.cur_batch = 0
-            random.shuffle(self.seq)
+            if self.shuffle:
+                random.shuffle(self.seq)
             raise StopIteration
         else:
             isrt = self.cur_batch*self.batch_size
