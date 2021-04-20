@@ -19,6 +19,9 @@ def parse_train_arguments():
     					default='l1', type=str)
     parser.add_argument("-nbins", "--nbins", help="Number of bins for binarization.",
     					default=10, type=int)
+    # validation
+    parser.add_argument("-val", "--val", help="Validation function.",
+    					default='r2', type=str,  choices=['mae', 'mse', 'rmse', 'r2'])
     # network
     parser.add_argument("-powf", "--powf", help="Power of 2 of filters.",
     					default=3, type=int)

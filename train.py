@@ -13,39 +13,7 @@ from Quantizer import Quantizer
 from Normalization import *
 from DatasetLucas import DatasetLucas
 from networks import Net
-
-
-def test(args, net, val_dataset):
-    net.eval()
-    loss = None
-    for src,tgt,bin,reg in val_dataset:
-        # move in device
-        src = src.to(args.device)
-        tgt = tgt.to(args.device)
-        # compute prediction
-        with torch.no_grad():
-            out = net(src)
-        # compare
-        cur_l = F.mse_loss(out,tgt,reduction='none').cpu()
-        loss = cur_l if loss is None else torch.cat((loss,cur_l), axis=0)
-    # compute average
-    var_loss = torch.sqrt(loss.mean(0))
-    tot_loss = torch.sqrt(loss.mean())
-    # fill DataFrame
-    var_names = args.tgt_vars
-    df = pd.DataFrame(columns=['variable', 'value'])
-    # put variables inside dataframe
-    for (vn,vl) in zip(var_names, var_loss):
-        df = df.append({'variable': vn, 'value': vl.item()}, ignore_index=True)
-    # sort by value
-    df.sort_values('value', ascending=True, inplace=True)
-    # append average
-    df = df.append({'variable': 'avg', 'value': tot_loss.item()}, ignore_index=True)
-    df = df.round(4)
-    df.set_index('variable', inplace=True)
-    # net back to train
-    net.train()
-    return df, tot_loss.item()
+from test import test, is_better
 
 
 def train(args, net, optimizer, train_dataset, loss_fn, writer, epoch, best_val):
@@ -71,7 +39,7 @@ def train(args, net, optimizer, train_dataset, loss_fn, writer, epoch, best_val)
         print('[{:d}/{:d}] Loss: {:.4f} - Val: {:.4f}' \
             .format(
             epoch, args.nepochs, cur_l,
-            best_val.loc['avg'].value if best_val is not None else 0.0))
+            best_val[args.val].loc['global'].value if best_val is not None else 0.0))
         # backward propagation
         cur_l.backward()
         # update weights
@@ -90,6 +58,19 @@ def get_metric_and_loss(loss):
         def metric_fun(x,y,b,r):
             pass
     return metric_fun, loss_fun
+
+
+def save_checkpoint(net, optimizer, tgt_norm, tgt_quant, cur_val, best_val, epoch, expdir, is_best=False):
+    state = {   'net':net.state_dict(),
+                'opt':optimizer.state_dict(),
+                'tgt_norm': tgt_norm.get_state(),
+                'tgt_quant': tgt_quant.get_state(),
+                'cur_val':cur_val,
+                'best_val': best_val,
+                'epoch':ne}
+    torch.save(state, os.path.join(expdir, 'checkpoints','{:d}.pth'.format(ne)))
+    if is_best:
+        torch.save(state, os.path.join(expdir, 'checkpoints','best.pth'))
 
 
 if __name__ == '__main__':
@@ -139,28 +120,17 @@ if __name__ == '__main__':
     # for each epoch
     for ne in range(start_epoch, args.nepochs):
         train(args, net, optimizer, train_dataset, loss_fun, writer, ne, best_val)
-        # test on validation dataset
-        df, loss = test(args, net, valid_dataset)
-        print('\n',df,'\n')
-        # check if it is the best
-        if best_val is None or df.loc['avg'].value < best_val.loc['avg'].value:
-            best_val = df
-            writer.add_scalar('best', best_val.loc['avg'].value, ne)
-            isbest = True
-        else:
-            isbest = False
+        cur_val = test(net, src_norm, tgt_norm, tgt_quant, valid_dataset, args.tgt_vars, device='cuda')
+        # print current value
+        print(cur_val[args.val])
         # save on tensorboard
-        for col in df.index:
-            writer.add_scalar(col, df.loc[col].value, ne)
-        # create state
-        state = {   'net':net.state_dict(),
-                    'opt':optimizer.state_dict(),
-                    'tgt_norm': tgt_norm.get_state(),
-                    'tgt_quant': tgt_quant.get_state(),
-                    'best_val': best_val,
-                    'res':df,
-                    'epoch':ne}
-        torch.save(state, os.path.join(args.experiment, 'checkpoints','{:d}.pth'.format(ne)))
-        # if it is the best, save it
-        if isbest:
-            torch.save(state, os.path.join(args.experiment, 'checkpoints', 'best.pth'))
+        for cur_metric in cur_val:
+            for cur_var in cur_val[cur_metric].index:
+                writer.add_scalar(cur_metric + '/' + cur_var, cur_val[cur_metric].loc[cur_var].value, ne)
+        # check if it's the best
+        if is_better(cur_val, best_val, args.val):
+            best_val = cur_val
+            save_checkpoint(net, optimizer, tgt_norm, tgt_quant, cur_val, best_val, ne, args.experiment, is_best=True)
+            writer.add_scalar(args.val + '/best', cur_val[args.val].loc['global'].value, ne)
+        else:
+            save_checkpoint(net, optimizer, tgt_norm, tgt_quant, cur_val, best_val, ne, args.experiment, is_best=False)
