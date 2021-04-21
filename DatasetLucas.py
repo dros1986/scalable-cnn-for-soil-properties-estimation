@@ -34,8 +34,8 @@ class DatasetLucas(object):
         # check size
         assert(self.src_y.shape[0] == self.tgt_vars.shape[0])
         # normalize source and target variables
-        self.src_y = self.src_norm.normalize(self.src_y)
-        self.tgt_vars = self.tgt_norm.normalize(self.tgt_vars)
+        self.src_y = self.src_norm(self.src_y)
+        self.tgt_vars = self.tgt_norm(self.tgt_vars)
         # quantize target variables
         self.tgt_bins, self.tgt_regs = self.tgt_quant.quantize(self.tgt_vars)
         # define number of batches

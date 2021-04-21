@@ -1,12 +1,16 @@
 import os
 import torch
+import torch.nn as nn
 import pandas as pd
 import numpy as np
 
 
-class InstanceStandardization(object):
+class InstanceStandardization(nn.Module):
     ''' Standardizes using sample mean and variance '''
-    def normalize(self, feats):
+    def __init__(self):
+        super(InstanceStandardization, self).__init__()
+
+    def forward(self, feats):
         mu = feats.mean(1).unsqueeze(1)
         vr = feats.var(1).unsqueeze(1)
         return (feats - mu) / vr
@@ -16,17 +20,20 @@ class InstanceStandardization(object):
         vr = feats.var(1).unsqueeze(1)
         return feats*vr + mu
 
-    def get_state(self): return {}
-    def set_state(self, state): return
 
 
-class GlobalStandardization(object):
+class GlobalStandardization(nn.Module):
     ''' Standardizes using global mean and variance '''
     def __init__(self, mu = None, vr = None):
+        super(GlobalStandardization, self).__init__()
+        # init parameters
+        self.register_buffer('mu', torch.tensor([]))
+        self.register_buffer('vr', torch.tensor([]))
+        # set values
         self.mu = mu
         self.vr = vr
 
-    def normalize(self, feats):
+    def forward(self, feats):
         if self.mu == None or self.vr == None:
             self.mu = feats.mean()
             self.vr = feats.var()
@@ -35,21 +42,20 @@ class GlobalStandardization(object):
     def invert(self, feats):
         return feats*self.vr + self.mu
 
-    def get_state(self):
-        return {'mu':self.mu, 'vr':self.vr}
-
-    def set_state(self, state):
-        self.mu = state['mu']
-        self.vr = state['vr']
 
 
-class VariableStandardization(object):
+class VariableStandardization(nn.Module):
     ''' Standardizes each variable independently '''
     def __init__(self, mu = None, vr = None):
+        super(VariableStandardization, self).__init__()
+        # init parameters
+        self.register_buffer('mu', torch.tensor([]))
+        self.register_buffer('vr', torch.tensor([]))
+        # set values
         self.mu = mu
         self.vr = vr
 
-    def normalize(self, feats):
+    def forward(self, feats):
         if self.mu == None or self.vr == None:
             self.mu = feats.mean(0).unsqueeze(0)
             self.vr = feats.var(0).unsqueeze(0)
@@ -58,9 +64,10 @@ class VariableStandardization(object):
     def invert(self, feats):
         return feats*self.vr + self.mu
 
-    def get_state(self):
-        return {'mu':self.mu, 'vr':self.vr}
 
-    def set_state(self, state):
-        self.mu = state['mu']
-        self.vr = state['vr']
+
+if __name__ == '__main__':
+    std = GlobalStandardization()
+    print(std.state_dict())
+    std(torch.rand(50,3)).var()
+    print(std.state_dict())
