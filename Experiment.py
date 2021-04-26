@@ -20,38 +20,35 @@ import pytorch_lightning as pl
 
 
 class Experiment(pl.LightningModule):
-    def __init__(self,
-                    train_csv, val_csv, test_csv, src_prefix, batch_size, num_workers,
-                    powf, max_powf, insz, minsz, nsbr, leak, batch_momentum, \
-                    learning_rate, weight_decay, loss, val, \
-                    nbins, tgt_vars):
+    def __init__(self, conf):
         super(Experiment, self).__init__()
         # save parameters
-        self.save_hyperparameters()
+        # self.save_hyperparameters(conf) # not working
+        self.hparams = conf
         # define network
-        self.net = Net(nemb=12, nch=1, powf=powf, max_powf=max_powf, insz=insz, \
-                minsz=minsz, nbsr=nsbr, leak=leak, batch_momentum=batch_momentum)
+        self.net = Net(nemb=12, nch=1, powf=conf['powf'], max_powf=conf['max_powf'], insz=conf['insz'], \
+                minsz=conf['minsz'], nbsr=conf['nsbr'], leak=conf['leak'], batch_momentum=conf['batch_momentum'])
         # define metric
-        self.metric_fun, self.loss_fun = self.get_metric_and_loss(loss)
+        self.metric_fun, self.loss_fun = self.get_metric_and_loss(conf['loss'])
         # create normalization objects
         self.src_norm = InstanceStandardization()
         self.tgt_norm = VariableStandardization()
         # define quantization object
-        self.tgt_quant = Quantizer(nbins=nbins)
+        self.tgt_quant = Quantizer(nbins=conf['nbins'])
         # save data params
-        self.train_csv = train_csv
-        self.val_csv = val_csv
-        self.test_csv = test_csv
-        self.src_prefix = src_prefix
-        self.batch_size = batch_size
-        self.num_workers = num_workers
+        self.train_csv = conf['train_csv']
+        self.val_csv = conf['val_csv']
+        self.test_csv = conf['test_csv']
+        self.src_prefix = conf['src_prefix']
+        self.batch_size = conf['batch_size']
+        self.num_workers = conf['num_workers']
         # save optimizer parameters
-        self.learning_rate = learning_rate
-        self.weight_decay = weight_decay
+        self.learning_rate = conf['learning_rate']
+        self.weight_decay = conf['weight_decay']
         # save other params
         # self.loss = loss
-        self.val = val
-        self.tgt_vars = tgt_vars
+        self.val = conf['val']
+        self.tgt_vars = conf['tgt_vars']
 
 
     def forward(self, x):
@@ -67,6 +64,7 @@ class Experiment(pl.LightningModule):
         # apply loss
         loss = self.loss_fun(out, tgt, bins, reg)
         # return loss value
+        self.log("train_loss", loss)
         return loss
 
 
@@ -77,15 +75,33 @@ class Experiment(pl.LightningModule):
         with torch.no_grad():
             out = self(src)
         # reverse normalization and quantization
-        tgt = self.tgt_norm.invert(tgt.cpu())
-        out = self.tgt_norm.invert(out.cpu())
+        tgt = self.tgt_norm.invert(tgt) #.cpu())
+        out = self.tgt_norm.invert(out) #.cpu())
         # test
         cur_val = test_batch(out, tgt, self.tgt_vars)
-        # save on tensorboard
+        # define output dict
+        out_metrics = {}
+        # for each metric
         for cur_metric in cur_val:
             for cur_var in cur_val[cur_metric].index:
-                self.log(cur_metric + '/' + cur_var, cur_val[cur_metric].loc[cur_var].value, prog_bar=True)
+                # get name and value
+                metric_name = cur_metric + '/' + cur_var
+                metric_val = cur_val[cur_metric].loc[cur_var].value
+                # log on tb
+                self.log(metric_name, metric_val, prog_bar=True)
+                # append to output
+                out_metrics[metric_name] = metric_val
+        # return
+        return out_metrics
 
+
+    def validation_epoch_end(self, outputs):
+        # get metrics
+        metrics = outputs[0].keys()
+        # for each metric, compute average over the validation steps
+        for cur_metric in metrics:
+            cur_avg = torch.tensor([x[cur_metric] for x in outputs]).mean()
+            self.log('avg/'+cur_metric, cur_avg)
 
 
     def test_step(self, batch, batch_idx):

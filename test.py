@@ -41,12 +41,12 @@ def test_batch(out, tgt, tgt_vars):
     tot_mae = abs_diff.mean()
     tot_mse = sqr_diff.mean()
     tot_rmse = torch.sqrt(tot_mse)
-    tot_r2 = torch.tensor(r2_score(tgt, out)).float()
+    tot_r2 = torch.tensor(r2_score(tgt.cpu(), out.cpu())).float()
     # get variable stats
     var_mae = abs_diff.mean(1)
     var_mse = sqr_diff.mean(1)
     var_rmse = torch.sqrt(var_mse)
-    var_r2 = torch.tensor([r2_score(tgt[:,v], out[:,v]) for v in range(tgt.size(1))])
+    var_r2 = torch.tensor([r2_score(tgt[:,v].cpu(), out[:,v].cpu()) for v in range(tgt.size(1))])
     # create output
     ris = {
         'mae': var_index_to_dataframe(var_mae, tgt_vars, glob=tot_mae, higher_is_better=False),
