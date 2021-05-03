@@ -28,17 +28,20 @@ class GlobalStandardization(nn.Module):
     def __init__(self):
         super(GlobalStandardization, self).__init__()
         # init parameters
-        self.register_buffer('mu', torch.tensor([]))
-        self.register_buffer('vr', torch.tensor([]))
+        self.register_buffer('mu', torch.zeros(1))
+        self.register_buffer('vr', torch.zeros(1))
+        self.register_buffer('setup', torch.tensor([True]))
 
     def load_state_dict(self, state):
         self.mu = state['mu']
         self.vr = state['vr']
+        self.setup[0] = False
 
     def forward(self, feats):
-        if self.mu.numel() == 0 or self.vr.numel() == 0:
+        if self.setup:
             self.mu = feats.mean()
             self.vr = feats.var()
+            self.setup[0] = False
         # move to proper device
         if not (self.mu.device == feats.device or self.vr.device == feats.device):
             self.mu = self.mu.to(feats.device)
@@ -58,21 +61,24 @@ class GlobalStandardization(nn.Module):
 
 class VariableStandardization(nn.Module):
     ''' Standardizes each variable independently '''
-    def __init__(self):
+    def __init__(self, nvars):
         super(VariableStandardization, self).__init__()
         # init parameters
-        self.register_buffer('mu', torch.tensor([]))
-        self.register_buffer('vr', torch.tensor([]))
+        self.register_buffer('mu', torch.zeros(1,nvars))
+        self.register_buffer('vr', torch.zeros(1,nvars))
+        self.register_buffer('setup', torch.tensor([True]))
 
 
     def load_state_dict(self, state):
         self.mu = state['mu']
         self.vr = state['vr']
+        self.setup[0] = False
 
     def forward(self, feats):
-        if self.mu.numel() == 0 or self.vr.numel() == 0:
+        if self.setup:
             self.mu = feats.mean(0).unsqueeze(0)
             self.vr = feats.var(0).unsqueeze(0)
+            self.setup[0] = False
         # move to proper device
         if not (self.mu.device == feats.device or self.vr.device == feats.device):
             self.mu = self.mu.to(feats.device)

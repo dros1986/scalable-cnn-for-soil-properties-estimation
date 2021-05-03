@@ -1,34 +1,36 @@
 import os
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import pandas as pd
 import numpy as np
 
 
-class Quantizer(object):
-    def __init__(self, nbins, fmin=None, fmax=None):
-        # store parameters
-        self.nbins = nbins
-        self.fmin = fmin
-        self.fmax = fmax
+class Quantizer(nn.Module):
+    def __init__(self, nbins, nvars):
+        super(Quantizer, self).__init__()
+        # create parameters holders
+        self.register_buffer('nbins', torch.tensor([nbins]))
+        self.register_buffer('fmin', torch.zeros(nvars))
+        self.register_buffer('fmax', torch.zeros(nvars))
+        self.register_buffer('setup', torch.tensor([True]))
 
 
-    def get_state(self):
-        return {'nbins':self.nbins, 'fmin':self.fmin, 'fmax':self.fmax}
-
-
-    def set_state(self, state):
+    def load_state_dict(self, state):
         self.nbins = state['nbins']
         self.fmin = state['fmin']
         self.fmax = state['fmax']
+        self.setup[0] = False
 
 
-    def quantize(self, feats):
+    def forward(self, feats):
         # get number of vars
         nvars = feats.shape[1]
         # compute min and max of each variable, if not specified in init
-        if self.fmin is None or self.fmax is None:
+        if self.setup[0]:
             self.fmin = feats.min(0)[0]
             self.fmax = feats.max(0)[0]
+            self.setup[0] = False
         # create linears
         # linears = [torch.linspace(self.fmin[i], self.fmax[i], self.nbins) for i in range(nvars)]
         # define output variables
@@ -40,7 +42,7 @@ class Quantizer(object):
             cur_min = self.fmin[nv]
             cur_max = self.fmax[nv]
             # cur_lin = linears[nv]
-            cur_lin = torch.linspace(cur_min, cur_max, self.nbins)
+            cur_lin = torch.linspace(cur_min, cur_max, self.nbins.item())
             cur_var = feats[:,nv]
             cur_lin_step = cur_lin[1]-cur_lin[0]
             # expand current var and linear to match size
@@ -66,12 +68,17 @@ class Quantizer(object):
         return bins, regs
 
 
-    def unquantize(self, bins, regs):
+    def invert(self, bins, regs):
+        # convert to long
+        bins = bins.long()
+        # convert to device
+        self.fmin = self.fmin.to(bins.device)
+        self.fmax = self.fmax.to(bins.device)
         # get number of variables
         nsamples = bins.shape[0]
         nvars = self.fmin.shape[0]
         # create output var
-        feats = torch.zeros(nsamples, nvars) #.as_type(regs.dtype)
+        feats = torch.zeros(nsamples, nvars).to(bins.device) #.as_type(regs.dtype)
         # for each var
         for nv in range(nvars):
             # get current variable and related
@@ -80,7 +87,7 @@ class Quantizer(object):
             cur_bin = bins[:,nv]
             cur_reg = regs[:,nv]
             # create corresponding linear space and get linear step
-            cur_lin = torch.linspace(cur_min, cur_max, self.nbins)
+            cur_lin = torch.linspace(cur_min, cur_max, self.nbins.item()).to(bins.device)
             cur_lin_step = cur_lin[1]-cur_lin[0]
             # expand current linear to match size
             cur_lin_exp = cur_lin.unsqueeze(0).repeat(nsamples,1)

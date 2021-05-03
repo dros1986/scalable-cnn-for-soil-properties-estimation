@@ -37,7 +37,7 @@ class DatasetLucas(object):
         self.src_y = self.src_norm(self.src_y)
         self.tgt_vars = self.tgt_norm(self.tgt_vars)
         # quantize target variables
-        self.tgt_bins, self.tgt_regs = self.tgt_quant.quantize(self.tgt_vars)
+        self.tgt_bins, self.tgt_regs = self.tgt_quant(self.tgt_vars)
         # define number of batches
         if drop_last:
             self.n_batches = self.tgt_vars.size(0) // self.batch_size

@@ -25,16 +25,22 @@ class Experiment(pl.LightningModule):
         # save parameters
         # self.save_hyperparameters(conf) # not working
         self.hparams = conf
+        self.conf = conf
+        # define output size
+        if conf['loss'] == 'classification':
+            outsz = len(conf['tgt_vars'])*conf['nbins'] + len(conf['tgt_vars'])
+        else:
+            outsz = len(conf['tgt_vars'])
         # define network
-        self.net = Net(nemb=12, nch=1, powf=conf['powf'], max_powf=conf['max_powf'], insz=conf['insz'], \
+        self.net = Net(nemb=outsz, nch=1, powf=conf['powf'], max_powf=conf['max_powf'], insz=conf['insz'], \
                 minsz=conf['minsz'], nbsr=conf['nsbr'], leak=conf['leak'], batch_momentum=conf['batch_momentum'])
         # define metric
-        self.metric_fun, self.loss_fun = self.get_metric_and_loss(conf['loss'])
+        self.loss_fun = self.get_loss(conf['loss'], conf['tgt_vars'], conf['nbins'])
         # create normalization objects
         self.src_norm = InstanceStandardization()
-        self.tgt_norm = VariableStandardization()
+        self.tgt_norm = VariableStandardization(len(conf['tgt_vars']))
         # define quantization object
-        self.tgt_quant = Quantizer(nbins=conf['nbins'])
+        self.tgt_quant = Quantizer(nbins=conf['nbins'], nvars=len(conf['tgt_vars']))
         # save data params
         self.train_csv = conf['train_csv']
         self.val_csv = conf['val_csv']
@@ -74,6 +80,8 @@ class Experiment(pl.LightningModule):
         # compute prediction
         with torch.no_grad():
             out = self(src)
+        # project to output space
+        out = self.project_to_output_space(out)
         # reverse normalization and quantization
         tgt = self.tgt_norm.invert(tgt) #.cpu())
         out = self.tgt_norm.invert(out) #.cpu())
@@ -133,15 +141,46 @@ class Experiment(pl.LightningModule):
 
 
 
-    def get_metric_and_loss(self, loss):
+    def get_loss(self, loss, tgt_vars, nbins):
         if loss == 'l1':
             loss_fun = lambda x,y,b,r: F.l1_loss(x,y)
-            metric_fun = nn.Identity()
         elif loss == 'l2' or loss == 'mse':
             loss_fun = lambda x,y,b,r: F.mse_loss(x,y)
-            metric_fun = nn.Identity()
         elif loss == 'classification':
             loss_fun = 0
-            def metric_fun(x,y,b,r):
-                pass
-        return metric_fun, loss_fun
+            def loss_fun(x,y,b,r):
+                # nll on bins
+                cl_loss = 0
+                for nv in range(len(tgt_vars)):
+                    cl_loss += F.nll_loss(x[:, nv*nbins:(nv+1)*nbins], b[:, nv])
+                # average cl loss
+                cl_loss /= len(tgt_vars)
+                # define offset for regression bins
+                off = nbins*len(tgt_vars)
+                # l1 regression on reg
+                rg_loss = F.l1_loss(x[:, off:], r)
+                # return average
+                return .5*cl_loss + .5*rg_loss
+        # return loss
+        return loss_fun
+
+
+    def project_to_output_space(self, x):
+        # if plain regression, return output
+        if not self.conf['loss'] == 'classification':
+            return x
+        # get vars
+        tgt_vars = self.tgt_vars
+        nbins = self.conf['nbins']
+        off = nbins*len(tgt_vars)
+        # else reconstruct bins
+        bins = torch.zeros(x.size(0),len(tgt_vars)).to(x.device)
+        for nv in range(len(tgt_vars)):
+            # reconstruct bins
+            cur_bin = x[:, nv*nbins:(nv+1)*nbins]
+            cur_bin = cur_bin.max(1)[1]
+            bins[:,nv] = cur_bin
+        # reconstruct regs
+        reg = x[:, off:]
+        # unquantize
+        return self.tgt_quant.invert(bins, reg)
