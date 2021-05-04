@@ -34,7 +34,7 @@ class Net(nn.Module):
         self.down = nn.Sequential(*down_blocks)
         # create embedding
         cur_sz = int(insz / (2**(len(self.n_filters)-1)))
-        inter_ch =  int((self.n_filters[-1]-nemb)/2)
+        inter_ch =  int(abs(self.n_filters[-1]+nemb)/2)
         emb = []
         emb.append(nn.Conv1d(self.n_filters[-1], inter_ch, kernel_size=cur_sz, stride=cur_sz, padding=0))
         emb.append(nn.BatchNorm1d(inter_ch, momentum=self.batch_momentum))
