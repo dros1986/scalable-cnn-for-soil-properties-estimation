@@ -1,6 +1,7 @@
 import ray
 from ray import tune
 from ray.tune.integration.pytorch_lightning import TuneReportCallback
+from ray.tune.integration.docker import DockerSyncer
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 import pytorch_lightning as pl
 from Experiment import Experiment
@@ -8,7 +9,7 @@ from pprint import pprint
 
 
 
-def train_grid_point(config, data_dir=None, max_epochs=5000, num_gpus=1): # 10000
+def train_grid_point(config, data_dir=None, max_epochs=50, num_gpus=1): # 5000 10000
     # define model
     model = Experiment(config)
     # define metrics
@@ -34,12 +35,12 @@ def train_grid_point(config, data_dir=None, max_epochs=5000, num_gpus=1): # 1000
 
 if __name__ == '__main__':
     # init ray
-    ray.init()
+    ray.init(address='149.132.176.97:6379', _redis_password='5241590000000000')
     # define grid configuration
     config = {
-        'train_csv': '/home/flavio/workspace/pignoletto/data/lucas_dataset_train.csv',
-        'val_csv': '/home/flavio/workspace/pignoletto/data/lucas_dataset_val.csv',
-        'test_csv': '/home/flavio/workspace/pignoletto/data/lucas_dataset_val.csv',
+        'train_csv': '/app/data/lucas_dataset_train.csv',
+        'val_csv': '/app/data/lucas_dataset_val.csv',
+        'test_csv': '/app/data/lucas_dataset_val.csv',
         'src_prefix': 'spc.',
         'batch_size': 2000, # 10000
         'num_workers': 8,
@@ -56,7 +57,7 @@ if __name__ == '__main__':
         'weight_decay': 0.01,
         'loss': tune.grid_search(['l1','l2']),
         'val': 'r2',
-        'nbins': 10,
+        'nbins': 0, # 10
         'tgt_vars': ['coarse','clay','silt','sand','pH.in.CaCl2','pH.in.H2O','OC','CaCO3','N','P','K','CEC'],
     }
 
@@ -69,8 +70,13 @@ if __name__ == '__main__':
         mode="max",
         resources_per_trial={"gpu": 1},
         # local_dir = '/home/flavio/ray_results',
-        name = 'pignoletto',
-        resume = True
+        local_dir = '/root/ray_results',
+        # to sync with docker
+        sync_config = tune.SyncConfig(
+            sync_to_driver=DockerSyncer
+        )
+        name = 'prova3',
+        resume = False
     )
     # resume = "ERRORED_ONLY"
 
