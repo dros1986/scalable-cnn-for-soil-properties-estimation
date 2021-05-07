@@ -48,6 +48,8 @@ class Experiment(pl.LightningModule):
         self.src_prefix = conf['src_prefix']
         self.batch_size = conf['batch_size']
         self.num_workers = conf['num_workers']
+        self.fmin = conf['fmin'] if 'fmin' in conf else None
+        self.fmax = conf['fmax'] if 'fmax' in conf else None
         # save optimizer parameters
         self.learning_rate = conf['learning_rate']
         self.weight_decay = conf['weight_decay']
@@ -125,18 +127,21 @@ class Experiment(pl.LightningModule):
     def train_dataloader(self):
         return DatasetLucas(self.train_csv, self.src_norm, self.tgt_norm, self.tgt_quant, \
                                 src_prefix=self.src_prefix, tgt_vars=self.tgt_vars, \
+                                fmin=self.fmin, fmax=self.fmax, \
                                 batch_size=self.batch_size, drop_last=True)
 
 
     def val_dataloader(self):
         return DatasetLucas(self.val_csv, self.src_norm, self.tgt_norm, self.tgt_quant, \
                                 src_prefix=self.src_prefix, tgt_vars=self.tgt_vars, \
+                                fmin=self.fmin, fmax=self.fmax, \
                                 batch_size=self.batch_size, drop_last=False)
 
 
     def test_dataloader(self):
         return DatasetLucas(self.test_csv, self.src_norm, self.tgt_norm, self.tgt_quant, \
                                 src_prefix=self.src_prefix, tgt_vars=self.tgt_vars, \
+                                fmin=self.fmin, fmax=self.fmax, \
                                 batch_size=self.batch_size, drop_last=False)
 
 

@@ -13,10 +13,12 @@ class DatasetLucas(object):
             src_norm,
             tgt_norm,
             tgt_quant,
-            src_prefix='spc.',
-            tgt_vars=['coarse','clay','silt','sand','pH.in.CaCl2','pH.in.H2O','OC','CaCO3','N','P','K','CEC'],
-            batch_size=100,
-            sep=',',
+            src_prefix = 'spc.',
+            tgt_vars = ['coarse','clay','silt','sand','pH.in.CaCl2','pH.in.H2O','OC','CaCO3','N','P','K','CEC'],
+            fmin = None,
+            fmax = None,
+            batch_size = 100,
+            sep = ',',
             drop_last = True,
             shuffle = True,
         ):
@@ -26,10 +28,12 @@ class DatasetLucas(object):
         self.tgt_quant = tgt_quant
         self.batch_size = batch_size
         self.shuffle = shuffle
+        self.fmin = fmin
+        self.fmax = fmax
         # read csv files
         df = pd.read_table(csv, sep=sep)
         # get source and target variables
-        self.src_cols, self.src_x, self.src_y = self.get_src(df, src_prefix)
+        self.src_cols, self.src_x, self.src_y = self.get_src(df, src_prefix, fmin, fmax)
         self.tgt_vars = self.get_tgt(df, tgt_vars)
         # check size
         assert(self.src_y.shape[0] == self.tgt_vars.shape[0])
@@ -51,7 +55,7 @@ class DatasetLucas(object):
         self.cur_batch = 0
 
 
-    def get_src(self, df, src_prefix):
+    def get_src(self, df, src_prefix, fmin, fmax):
         ''' gets infrared signals using cols starting with src_prefix '''
         # get x points
         src_cols = [col for col in df.columns if col.startswith(src_prefix)]
@@ -62,6 +66,16 @@ class DatasetLucas(object):
         # extract x and y values
         src_x = x[pos]
         src_y = df[src_cols].to_numpy()
+        # keep only frequences in range
+        cond = np.ones(src_x.shape).astype(np.bool)
+        if fmin is not None:
+            # import ipdb; ipdb.set_trace()
+            cond *= src_x>=fmin
+        if fmax is not None:
+            cond *= src_x<=fmax
+        src_y = src_y[:,cond]
+        src_cols = [cur_col for (cur_col, cur_cond) in zip(src_cols, cond) if cur_cond]
+        src_x = src_x[cond]
         # convert to tensor
         src_x = torch.from_numpy(src_x).float()
         src_y = torch.from_numpy(src_y).float()
@@ -109,16 +123,22 @@ if __name__ == '__main__':
     from Quantizer import Quantizer
     # instantiate normalizer and quantizer
     src_norm = InstanceStandardization()
-    tgt_norm = VariableStandardization()
-    quant = Quantizer(nbins=10)
+    tgt_norm = VariableStandardization(12)
+    quant = Quantizer(nvars=12, nbins=10)
     # instantiate dataset
-    csv = 'data/LUCAS.SOIL_corr_FULL_val.csv'
-    data = DatasetLucas(csv, src_norm, tgt_norm, quant, batch_size=500)
-    boh = DatasetLucas(csv, src_norm, tgt_norm, quant, batch_size=500)
+    csv = '/home/flavio/datasets/LucasLibrary/shared/lucas_dataset_val.csv'
+    # data = DatasetLucas(csv, src_norm, tgt_norm, quant, fmin=500, fmax=1000, batch_size=500)
+    data = DatasetLucas(csv, src_norm, tgt_norm, quant, batch_size=100)
+    # boh = DatasetLucas(csv, src_norm, tgt_norm, quant, batch_size=500)
     # check
     for cur_in, cur_gt, cur_bin, cur_reg in data:
         print(cur_in.shape)
         print(cur_gt.shape)
         print(cur_bin.shape)
         print(cur_reg.shape)
+        # import matplotlib.pyplot as plt
+        # for i in range(cur_in.size(0)):
+        #     plt.plot(data.src_x, cur_in.squeeze()[i])
+        # plt.show()
+        # import ipdb; ipdb.set_trace()
         break
