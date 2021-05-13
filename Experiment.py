@@ -34,8 +34,8 @@ class Experiment(pl.LightningModule):
             sigmoid_from = None
         # define network
         self.net = Net(nemb=outsz, nch=1, powf=conf['powf'], max_powf=conf['max_powf'], insz=conf['insz'], \
-                minsz=conf['minsz'], nbsr=conf['nsbr'], leak=conf['leak'], batch_momentum=conf['batch_momentum'] \
-                sigmoid_from=sigmoid_from)
+                minsz=conf['minsz'], nbsr=conf['nsbr'], leak=conf['leak'], batch_momentum=conf['batch_momentum'], \
+                use_batchnorm=conf['use_batchnorm'], sigmoid_from=sigmoid_from)
         # define metric
         self.loss_fun = self.get_loss(conf['loss'], conf['tgt_vars'], conf['nbins'])
         # create normalization objects

@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 class Net(nn.Module):
     def __init__(self, nemb=12, nch=1, powf=3, max_powf=8, insz=1024, minsz=8, nbsr=1, leak=0.2, \
-                batch_momentum=.01, sigmoid_from=None):
+                batch_momentum=.01, use_batchnorm=True, sigmoid_from=None):
         '''
         @param nemb size of the embedding
         @param nch number of input channels
@@ -31,14 +31,15 @@ class Net(nn.Module):
         # create layers
         down_blocks = []
         for i in range(len(self.n_filters)-1):
-            down_blocks.extend(self.down_block( self.n_filters[i], self.n_filters[i+1] ))
+            down_blocks.extend(self.down_block( self.n_filters[i], self.n_filters[i+1], use_batchnorm ))
         self.down = nn.Sequential(*down_blocks)
         # create embedding
         cur_sz = int(insz / (2**(len(self.n_filters)-1)))
         inter_ch =  int(abs(self.n_filters[-1]+nemb)/2)
         emb = []
         emb.append(nn.Conv1d(self.n_filters[-1], inter_ch, kernel_size=cur_sz, stride=cur_sz, padding=0))
-        emb.append(nn.BatchNorm1d(inter_ch, momentum=self.batch_momentum))
+        if use_batchnorm:
+            emb.append(nn.BatchNorm1d(inter_ch, momentum=self.batch_momentum))
         if self.leak > 0:
             emb.append(nn.LeakyReLU(negative_slope=self.leak, inplace=True))
         else:
@@ -58,11 +59,12 @@ class Net(nn.Module):
         return x
 
 
-    def down_block(self, inch, outch):
+    def down_block(self, inch, outch, use_batchnorm):
         blocks = []
         # create down block
         blocks.append(nn.Conv1d(inch, outch, kernel_size=4, stride=2, padding=1))
-        blocks.append(nn.BatchNorm1d(outch, momentum=self.batch_momentum))
+        if use_batchnorm:
+            blocks.append(nn.BatchNorm1d(outch, momentum=self.batch_momentum))
         if self.leak > 0:
             blocks.append(nn.LeakyReLU(negative_slope=self.leak, inplace=True))
         else:
@@ -71,7 +73,8 @@ class Net(nn.Module):
         # add same resolution blocks
         for i in range(self.nb):
             blocks.append(nn.Conv1d(outch, outch, kernel_size=3, stride=1, padding=1))
-            blocks.append(nn.BatchNorm1d(outch, momentum=self.batch_momentum))
+            if use_batchnorm:
+                blocks.append(nn.BatchNorm1d(outch, momentum=self.batch_momentum))
             if self.leak > 0:
                 blocks.append(nn.LeakyReLU(negative_slope=self.leak, inplace=True))
             else:
