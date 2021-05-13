@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 class Net(nn.Module):
     def __init__(self, nemb=12, nch=1, powf=3, max_powf=8, insz=1024, minsz=8, nbsr=1, leak=0.2, \
-                batch_momentum=.01):
+                batch_momentum=.01, sigmoid_from=None):
         '''
         @param nemb size of the embedding
         @param nch number of input channels
@@ -21,6 +21,7 @@ class Net(nn.Module):
         self.insz = insz
         self.leak = leak
         self.batch_momentum = batch_momentum
+        self.sigmoid_from = sigmoid_from
         # calculate number of blocks to arrive to 1 x minsz
         nblocks = int(math.log(float(insz)/float(minsz), 2))
         # for each block define the number of filters
@@ -51,7 +52,10 @@ class Net(nn.Module):
         x = F.interpolate(x, size=self.insz, mode='linear', align_corners=True)
         x = self.down(x)
         x = self.emb(x)
-        return x.squeeze(-1)
+        x = x.squeeze(-1)
+        if self.sigmoid_from:
+            x[:,self.sigmoid_from:] = torch.sigmoid(x[:,self.sigmoid_from:])
+        return x
 
 
     def down_block(self, inch, outch):
@@ -79,11 +83,12 @@ class Net(nn.Module):
 
 if __name__ == '__main__':
     # init network
-    emb = Net(nemb=12, nch=1, powf=4, max_powf=7, insz=4096, minsz=4, nbsr=0, leak=0.2, batch_momentum=.01)
+    emb = Net(nemb=12, nch=1, powf=4, max_powf=7, insz=4096, minsz=4, nbsr=0, leak=0.2, batch_momentum=.01, sigmoid_from=10)
             # stride, avgpool maxpool
     emb.cuda()
     # describe
     from torchsummary import summary
     summary(emb, (1, 4200))
     # print output size
+    import ipdb; ipdb.set_trace()
     print(emb(torch.rand(10,1,1,4200).cuda()).size())

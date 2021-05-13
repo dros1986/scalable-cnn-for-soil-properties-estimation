@@ -28,11 +28,14 @@ class Experiment(pl.LightningModule):
         # define output size
         if conf['loss'] == 'classification':
             outsz = len(conf['tgt_vars'])*conf['nbins'] + len(conf['tgt_vars'])
+            sigmoid_from = len(conf['tgt_vars'])*conf['nbins']
         else:
             outsz = len(conf['tgt_vars'])
+            sigmoid_from = None
         # define network
         self.net = Net(nemb=outsz, nch=1, powf=conf['powf'], max_powf=conf['max_powf'], insz=conf['insz'], \
-                minsz=conf['minsz'], nbsr=conf['nsbr'], leak=conf['leak'], batch_momentum=conf['batch_momentum'])
+                minsz=conf['minsz'], nbsr=conf['nsbr'], leak=conf['leak'], batch_momentum=conf['batch_momentum'] \
+                sigmoid_from=sigmoid_from)
         # define metric
         self.loss_fun = self.get_loss(conf['loss'], conf['tgt_vars'], conf['nbins'])
         # create normalization objects
