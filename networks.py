@@ -40,7 +40,7 @@ class Net(nn.Module):
         emb.append(nn.Conv1d(self.n_filters[-1], inter_ch, kernel_size=cur_sz, stride=cur_sz, padding=0))
         emb.append(nn.BatchNorm1d(inter_ch, momentum=self.batch_momentum))
         if self.leak > 0:
-            emb.append(nn.PReLU(num_parameters=inter_ch, init=self.leak))
+            emb.append(nn.LeakyReLU(negative_slope=self.leak, inplace=True))
         else:
             emb.append(nn.ReLU(inplace=True))
         emb.append(nn.Conv1d(inter_ch, nemb, kernel_size=1, stride=1, padding=0))
@@ -64,7 +64,7 @@ class Net(nn.Module):
         blocks.append(nn.Conv1d(inch, outch, kernel_size=4, stride=2, padding=1))
         blocks.append(nn.BatchNorm1d(outch, momentum=self.batch_momentum))
         if self.leak > 0:
-            blocks.append(nn.PReLU(num_parameters=outch, init=self.leak))
+            blocks.append(nn.LeakyReLU(negative_slope=self.leak, inplace=True))
         else:
             blocks.append(nn.ReLU(inplace=True))
 
@@ -73,7 +73,7 @@ class Net(nn.Module):
             blocks.append(nn.Conv1d(outch, outch, kernel_size=3, stride=1, padding=1))
             blocks.append(nn.BatchNorm1d(outch, momentum=self.batch_momentum))
             if self.leak > 0:
-                blocks.append(nn.PReLU(num_parameters=outch, init=self.leak))
+                blocks.append(nn.LeakyReLU(negative_slope=self.leak, inplace=True))
             else:
                 blocks.append(nn.ReLU(inplace=True))
 
@@ -90,5 +90,4 @@ if __name__ == '__main__':
     from torchsummary import summary
     summary(emb, (1, 4200))
     # print output size
-    import ipdb; ipdb.set_trace()
     print(emb(torch.rand(10,1,1,4200).cuda()).size())
