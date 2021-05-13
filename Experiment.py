@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from argument_parser import parse_train_arguments
 from Quantizer import Quantizer
 from Normalization import *
 from DatasetLucas import DatasetLucas
@@ -138,11 +137,12 @@ class Experiment(pl.LightningModule):
                                 batch_size=self.batch_size, drop_last=False)
 
 
-    def test_dataloader(self):
+    def test_dataloader(self, return_coords=False):
         return DatasetLucas(self.test_csv, self.src_norm, self.tgt_norm, self.tgt_quant, \
                                 src_prefix=self.src_prefix, tgt_vars=self.tgt_vars, \
                                 fmin=self.fmin, fmax=self.fmax, \
-                                batch_size=self.batch_size, drop_last=False)
+                                batch_size=self.batch_size, drop_last=False, \
+                                return_coords=return_coords)
 
 
 
@@ -189,3 +189,47 @@ class Experiment(pl.LightningModule):
         reg = x[:, off:]
         # unquantize
         return self.tgt_quant.invert(bins, reg)
+
+
+    def regen(self, out_fn, dl=None, sep=';'):
+        # get dataloader if not specified
+        if dl == None:
+            dl = self.test_dataloader(return_coords=True)
+        # open output file
+        f = open(out_fn, 'w')
+        # write header
+        f.write(sep.join(['lat','lon'] + self.conf['tgt_vars']) + '\n')
+        # for each batch
+        for src, tgt, bins, reg, coords in dl:
+            # compute prediction
+            with torch.no_grad(): out = model(src)
+            # project to output space
+            out = self.project_to_output_space(out)
+            out = self.tgt_norm.invert(out)
+            # concatenate coordinates
+            out = torch.cat((coords, out.cpu()),1).numpy()
+            # save to file
+            np.savetxt(f, out, delimiter=sep,  fmt='%.6f')
+        f.close()
+
+
+
+if __name__ == '__main__':
+    # parse arguments
+    # get arguments
+    parser = argparse.ArgumentParser()
+    # checkpoint path
+    parser.add_argument("-ckp", "--checkpoint", help="Checkpoint.",
+    					default='', type=str)
+    parser.add_argument("-out", "--out", help="Output filename.",
+    					default='', type=str)
+    # parse args
+    args = parser.parse_args()
+    # load model
+    model = Experiment.load_from_checkpoint(args.checkpoint)
+    model.eval()
+    # if out not specified, save in folder
+    if args.out == '':
+        args.out = os.path.join(os.path.dirname(args.checkpoint), 'test.csv')
+    # regen
+    model.regen(args.out)

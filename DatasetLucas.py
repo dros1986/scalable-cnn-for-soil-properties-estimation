@@ -21,6 +21,7 @@ class DatasetLucas(object):
             sep = ',',
             drop_last = True,
             shuffle = True,
+            return_coords = False
         ):
         # save attributes
         self.src_norm = src_norm
@@ -42,6 +43,9 @@ class DatasetLucas(object):
         self.tgt_vars = self.tgt_norm(self.tgt_vars)
         # quantize target variables
         self.tgt_bins, self.tgt_regs = self.tgt_quant(self.tgt_vars)
+        # get coordinates
+        self.return_coords = return_coords
+        self.coords = torch.from_numpy(df[['GPS_LAT','GPS_LONG']].to_numpy()).float()
         # define number of batches
         if drop_last:
             self.n_batches = self.tgt_vars.size(0) // self.batch_size
@@ -111,6 +115,8 @@ class DatasetLucas(object):
             tgt = self.tgt_vars[ids].float()
             bins = self.tgt_bins[ids]
             regs = self.tgt_regs[ids]
+            if self.return_coords:
+                return src_y, tgt, bins, regs, self.coords[ids]
             return src_y, tgt, bins, regs
 
     def __len__(self):
@@ -130,6 +136,9 @@ if __name__ == '__main__':
     # data = DatasetLucas(csv, src_norm, tgt_norm, quant, fmin=500, fmax=1000, batch_size=500)
     data = DatasetLucas(csv, src_norm, tgt_norm, quant, batch_size=100)
     # boh = DatasetLucas(csv, src_norm, tgt_norm, quant, batch_size=500)
+    print(data.src_x.min())
+    print(data.src_x.max())
+    print('---')
     # check
     for cur_in, cur_gt, cur_bin, cur_reg in data:
         print(cur_in.shape)
