@@ -8,6 +8,12 @@ from Experiment import Experiment
 from pprint import pprint
 
 
+def get_filename(cur_quantity):
+    fn = '{}-{{epoch}}-{{step}}'.format(cur_quantity)
+    for cur_metric in ['mae','mse','rmse','r2', 'pearson']:
+        fn += '-{avg/' + cur_metric + '/global:.2f}'
+    return fn
+
 
 def train_grid_point(config, data_dir=None, max_epochs=5000, num_gpus=1): # 5000 10000
     # define model
@@ -15,12 +21,16 @@ def train_grid_point(config, data_dir=None, max_epochs=5000, num_gpus=1): # 5000
     # define metrics
     metrics = {}
     for cur_var in config['tgt_vars'] + ['global']:
-        for cur_metric in ['mae','mse','rmse','r2']:
+        for cur_metric in ['mae','mse','rmse','r2', 'pearson']:
             metrics[cur_metric + '/' + cur_var] = 'avg/' + cur_metric + '/'+cur_var
     # define tune callback
     callbacks = [
                   TuneReportCallback(metrics, on="validation_end"),
-                  ModelCheckpoint(monitor='avg/r2/global', save_top_k=1, save_last=True)
+                  ModelCheckpoint(monitor='avg/r2/global', mode='max', save_top_k=1, save_last=True, filename=get_filename('r2')),
+                  ModelCheckpoint(monitor='avg/mae/global', mode='min', save_top_k=1, save_last=True, filename=get_filename('mae')),
+                  ModelCheckpoint(monitor='avg/mse/global', mode='min', save_top_k=1, save_last=True, filename=get_filename('mse')),
+                  ModelCheckpoint(monitor='avg/rmse/global', mode='min', save_top_k=1, save_last=True, filename=get_filename('rmse')),
+                  ModelCheckpoint(monitor='avg/pearson/global', mode='max', save_top_k=1, save_last=True, filename=get_filename('pearson')),
                 ]
     # define trainer
     trainer = pl.Trainer(gpus=num_gpus, max_epochs=max_epochs, progress_bar_refresh_rate=20, callbacks=callbacks)
@@ -53,6 +63,7 @@ if __name__ == '__main__':
         'nsbr': 1,
         'leak': 0,
         'batch_momentum': 0.01,
+        'use_batchnorm': True,
 
         'learning_rate': tune.grid_search([0.001, 0.0001]),  #0.001,
         'weight_decay': 0.01,

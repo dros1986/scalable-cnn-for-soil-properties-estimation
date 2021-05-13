@@ -47,12 +47,15 @@ def test_batch(out, tgt, tgt_vars):
     var_mse = sqr_diff.mean(1)
     var_rmse = torch.sqrt(var_mse)
     var_r2 = torch.tensor([r2_score(tgt[:,v].cpu(), out[:,v].cpu()) for v in range(tgt.size(1))])
+    var_pearson = torch.tensor([np.corrcoef(tgt[:,v].cpu(), out[:,v].cpu()) for v in range(tgt.size(1))])
+    tot_pearson = var_pearson.mean()
     # create output
     ris = {
         'mae': var_index_to_dataframe(var_mae, tgt_vars, glob=tot_mae, higher_is_better=False),
         'mse': var_index_to_dataframe(var_mse, tgt_vars, glob=tot_mse, higher_is_better=False),
         'rmse': var_index_to_dataframe(var_rmse, tgt_vars, glob=tot_rmse, higher_is_better=False),
         'r2': var_index_to_dataframe(var_r2, tgt_vars, glob=tot_r2, higher_is_better=True),
+        'pearson': var_index_to_dataframe(var_pearson, tgt_vars, glob=tot_pearson, higher_is_better=True),
     }
     # return
     return ris
