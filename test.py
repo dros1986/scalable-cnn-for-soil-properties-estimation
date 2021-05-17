@@ -46,7 +46,7 @@ def test_batch(out, tgt, tgt_vars):
     var_mse = sqr_diff.mean(1)
     var_rmse = torch.sqrt(var_mse)
     var_r2 = torch.tensor([r2_score(tgt[:,v].cpu(), out[:,v].cpu()) for v in range(tgt.size(1))])
-    var_pearson = torch.tensor([np.corrcoef(tgt[:,v].cpu(), out[:,v].cpu()) for v in range(tgt.size(1))])
+    var_pearson = torch.tensor([np.corrcoef(tgt[:,v].cpu(), out[:,v].cpu())[0,1] for v in range(tgt.size(1))])
     tot_pearson = var_pearson.mean()
     # create output
     ris = {
