@@ -13,6 +13,7 @@ from Quantizer import Quantizer
 from Normalization import *
 from DatasetLucas import DatasetLucas
 from networks import Net
+from Renderer import Renderer
 from test import test_batch #, is_better
 
 import pytorch_lightning as pl
@@ -196,14 +197,14 @@ class Experiment(pl.LightningModule):
         return self.tgt_quant.invert(bins, reg)
 
 
-    def regen(self, out_fn, dl=None, sep=';'):
+    def regen(self, out_fn, dl=None, sep=';', map='', spatial_resolution=(0.05, 0.05), crs=4326):
         # get dataloader if not specified
         if dl == None:
             dl = self.test_dataloader(return_coords=True)
-        # open output file
-        f = open(out_fn, 'w')
-        # write header
-        f.write(sep.join(['lat','lon'] + self.conf['tgt_vars']) + '\n')
+        # create renderer object
+        renderer = Renderer(map, crs=crs)
+        # create output var
+        tot = None
         # for each batch
         for src, tgt, bins, reg, coords in dl:
             # compute prediction
@@ -213,9 +214,15 @@ class Experiment(pl.LightningModule):
             out = self.tgt_norm.invert(out)
             # concatenate coordinates
             out = torch.cat((coords, out.cpu()),1).numpy()
-            # save to file
-            np.savetxt(f, out, delimiter=sep,  fmt='%.6f')
-        f.close()
+            # append
+            tot = out if tot is None else torch.cat((tot,out),0)
+        # create empty dataframe
+        df = pd.DataFrame(data=tot, columns=['lat','lon'] + self.conf['tgt_vars'])
+        # save to csv
+        df.to_csv(out_fn, sep=sep, float_format='%.6f', index=False)
+        # render
+        renderer.render(df, self.tgt_vars, out_dir=os.path.dirname(out_fn), \
+                spatial_res=spatial_resolution, lon_key='lon', lat_key='lat')
 
 
 
@@ -226,6 +233,14 @@ if __name__ == '__main__':
     # checkpoint path
     parser.add_argument("-ckp", "--checkpoint", help="Checkpoint.",
     					default='', type=str)
+    parser.add_argument("-map", "--map", help="Map shapefile. If empty, no rendering.",
+    					default='', type=str)
+    parser.add_argument("-crs", "--crs", help="CRS of map and coords in csv.",
+                        default=4326, type=int)
+    parser.add_argument("-sr", "--spatial_resolution", help="Map shapefile. If empty, no rendering.",
+    					default=(0.05, 0.05), type=float, nargs=2)
+    parser.add_argument("-sep", "--sep", help="Col separator.",
+    					default=';', type=str)
     parser.add_argument("-out", "--out", help="Output filename.",
     					default='', type=str)
     # parse args
@@ -237,4 +252,5 @@ if __name__ == '__main__':
     if args.out == '':
         args.out = os.path.join(os.path.dirname(args.checkpoint), 'test.csv')
     # regen
-    model.regen(args.out)
+    # regen(self, out_fn, dl=None, sep=';', map='', spatial_resolution=(0.05, 0.05), crs=4326)
+    model.regen(args.out, sep=args.sep, map=args.map, spatial_resolution=args.spatial_resolution, crs=args.crs)
