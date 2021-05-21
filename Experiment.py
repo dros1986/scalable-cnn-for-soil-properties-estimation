@@ -140,14 +140,14 @@ class Experiment(pl.LightningModule):
         return DatasetLucas(self.val_csv, self.src_norm, self.tgt_norm, self.tgt_quant, \
                                 src_prefix=self.src_prefix, tgt_vars=self.tgt_vars, \
                                 fmin=self.fmin, fmax=self.fmax, \
-                                batch_size=self.batch_size, drop_last=False)
+                                batch_size=self.batch_size, drop_last=False, shuffle=False)
 
 
     def test_dataloader(self, return_coords=False):
         return DatasetLucas(self.test_csv, self.src_norm, self.tgt_norm, self.tgt_quant, \
                                 src_prefix=self.src_prefix, tgt_vars=self.tgt_vars, \
                                 fmin=self.fmin, fmax=self.fmax, \
-                                batch_size=self.batch_size, drop_last=False, \
+                                batch_size=self.batch_size, drop_last=False, shuffle=False, \
                                 return_coords=return_coords)
 
 
