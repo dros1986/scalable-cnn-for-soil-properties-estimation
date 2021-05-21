@@ -55,21 +55,24 @@ if __name__ == '__main__':
         'src_prefix': 'spc.',
         'batch_size': 2000, # 10000
         'num_workers': 8,
+        'fmin': tune.grid_search([400, 800, 1200]),
+        'fmax': tune.grid_search([2300, 2400, 2500]),
 
         'powf': 4,
         'max_powf': 7,
         'insz': tune.grid_search([512, 1024, 2048]),
         'minsz': 4,
         'nsbr': 1,
-        'leak': 0,
+        'leak': tune.grid_search([0, 0.2]),
         'batch_momentum': 0.01,
-        'use_batchnorm': True,
+        'use_batchnorm': tune.grid_search([True, False]),
 
-        'learning_rate': tune.grid_search([0.001, 0.0001]),  #0.001,
+        'learning_rate': 0.0001, #tune.grid_search([0.001, 0.0001]),  #0.001,
         'weight_decay': 0.01,
         'loss': tune.grid_search(['l1','l2', 'classification']),
         'val': 'r2',
-        'nbins': 10, # 10
+
+        'nbins': 10, # 'nbins': tune.choice([10, 20, 30]),
         'tgt_vars': ['coarse','clay','silt','sand','pH.in.CaCl2','pH.in.H2O','OC','CaCO3','N','P','K','CEC'],
     }
 
@@ -77,12 +80,15 @@ if __name__ == '__main__':
 
     analysis = tune.run(
         train_grid_point,
-        name = 'prova3',
+        name = 'grid1',
         local_dir = '/home/flavio/ray_results',
         config = config,
         metric = 'r2/global',
         mode = 'max',
-        resources_per_trial = {'cpu': 6, 'gpu': 1},
+        resources_per_trial = {'cpu': 4, 'gpu': 0.333},
+        # resources_per_trial = {'cpu': 4, 'gpu': 0.5},
+        # resources_per_trial = {'cpu': 3, 'gpu': 0.25},
+        # resources_per_trial = {'cpu': 6, 'gpu': 1},
         resume = False
     )
     # resume = "ERRORED_ONLY"
@@ -98,6 +104,6 @@ if __name__ == '__main__':
         pprint(best_config)
         # Get a dataframe for analyzing trial results.
         df = analysis.dataframe()
-        df.to_csv('grid_results_prova3.csv', sep=';', index=False)
+        df.to_csv('grid1.csv', sep=';', index=False)
     except:
         import ipdb; ipdb.set_trace()
