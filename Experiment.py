@@ -13,7 +13,7 @@ from Quantizer import Quantizer
 from Normalization import *
 from DatasetLucas import DatasetLucas
 from networks import Net
-from Renderer import Renderer
+# from Renderer import Renderer
 from test import test_batch #, is_better
 
 import pytorch_lightning as pl
@@ -199,6 +199,8 @@ class Experiment(pl.LightningModule):
 
 
     def regen(self, out_fn, dl=None, sep=';', map='', spatial_resolution=(0.05, 0.05), crs=4326):
+        # import renderer
+        from Renderer import Renderer
         # get dataloader if not specified
         if dl == None:
             dl = self.test_dataloader(return_coords=True)
