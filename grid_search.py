@@ -8,11 +8,6 @@ from Experiment import Experiment
 from pprint import pprint
 
 
-def get_filename(cur_quantity):
-    fn = '{}-{{epoch}}-{{step}}'.format(cur_quantity)
-    for cur_metric in ['mae','mse','rmse','r2', 'pearson']:
-        fn += '-{avg/' + cur_metric + '/global:.2f}'
-    return fn
 
 
 def train_grid_point(config, data_dir=None, max_epochs=5000, num_gpus=1): # 5000 10000
@@ -26,11 +21,11 @@ def train_grid_point(config, data_dir=None, max_epochs=5000, num_gpus=1): # 5000
     # define tune callback
     callbacks = [
                   TuneReportCallback(metrics, on="validation_end"),
-                  ModelCheckpoint(monitor='avg/r2/global', mode='max', save_top_k=1, save_last=True, filename=get_filename('r2')),
-                  ModelCheckpoint(monitor='avg/mae/global', mode='min', save_top_k=1, save_last=True, filename=get_filename('mae')),
-                  ModelCheckpoint(monitor='avg/mse/global', mode='min', save_top_k=1, save_last=True, filename=get_filename('mse')),
-                  ModelCheckpoint(monitor='avg/rmse/global', mode='min', save_top_k=1, save_last=True, filename=get_filename('rmse')),
-                  ModelCheckpoint(monitor='avg/pearson/global', mode='max', save_top_k=1, save_last=True, filename=get_filename('pearson')),
+                  ModelCheckpoint(monitor='avg/r2/global', mode='max', save_top_k=1, save_last=True, filename='r2'),
+                  ModelCheckpoint(monitor='avg/mae/global', mode='min', save_top_k=1, save_last=True, filename='mae'),
+                  ModelCheckpoint(monitor='avg/mse/global', mode='min', save_top_k=1, save_last=True, filename='mse'),
+                  ModelCheckpoint(monitor='avg/rmse/global', mode='min', save_top_k=1, save_last=True, filename='rmse'),
+                  ModelCheckpoint(monitor='avg/pearson/global', mode='max', save_top_k=1, save_last=True, filename='pearson'),
                 ]
     # define trainer
     trainer = pl.Trainer(gpus=num_gpus, max_epochs=max_epochs, progress_bar_refresh_rate=20, callbacks=callbacks)
@@ -51,11 +46,11 @@ if __name__ == '__main__':
     config = {
         'train_csv': '/home/flavio/datasets/LucasLibrary/shared/lucas_dataset_train.csv',
         'val_csv': '/home/flavio/datasets/LucasLibrary/shared/lucas_dataset_val.csv',
-        'test_csv': '/home/flavio/datasets/LucasLibrary/shared/lucas_dataset_val.csv',
+        'test_csv': '/home/flavio/datasets/LucasLibrary/shared/lucas_dataset_test.csv',
         'src_prefix': 'spc.',
         'batch_size': 2000, # 10000
         'num_workers': 8,
-        'fmin': tune.grid_search([400, 800, 1200]),
+        'fmin': tune.grid_search([450, 800, 1200]),    # 450
         'fmax': tune.grid_search([2300, 2400, 2500]),
 
         'powf': 4,
@@ -66,6 +61,7 @@ if __name__ == '__main__':
         'leak': tune.grid_search([0, 0.2]),
         'batch_momentum': 0.01,
         'use_batchnorm': tune.grid_search([True, False]),
+        'use_gap': False,
 
         'learning_rate': 0.0001, #tune.grid_search([0.001, 0.0001]),  #0.001,
         'weight_decay': 0.01,
@@ -80,7 +76,7 @@ if __name__ == '__main__':
 
     analysis = tune.run(
         train_grid_point,
-        name = 'grid1',
+        name = 'grid2',
         local_dir = '/home/flavio/ray_results',
         config = config,
         metric = 'r2/global',
@@ -104,6 +100,8 @@ if __name__ == '__main__':
         pprint(best_config)
         # Get a dataframe for analyzing trial results.
         df = analysis.dataframe()
-        df.to_csv('grid1.csv', sep=';', index=False)
+        df.to_csv('grid2.csv', sep=';', index=False)
+        import ipdb; ipdb.set_trace()
     except:
         import ipdb; ipdb.set_trace()
+        # df = analysis.results_df
