@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 class Net(nn.Module):
     def __init__(self, nemb=12, nch=1, powf=3, max_powf=8, insz=1024, minsz=8, nbsr=1, leak=0.2, \
-                batch_momentum=.01, use_batchnorm=True, sigmoid_from=None):
+                batch_momentum=.01, use_batchnorm=True, sigmoid_from=None, use_gap=False):
         '''
         @param nemb size of the embedding
         @param nch number of input channels
@@ -22,6 +22,7 @@ class Net(nn.Module):
         self.leak = leak
         self.batch_momentum = batch_momentum
         self.sigmoid_from = sigmoid_from
+        self.use_gap = use_gap
         # calculate number of blocks to arrive to 1 x minsz
         nblocks = int(math.log(float(insz)/float(minsz), 2))
         # for each block define the number of filters
@@ -33,6 +34,13 @@ class Net(nn.Module):
         for i in range(len(self.n_filters)-1):
             down_blocks.extend(self.down_block( self.n_filters[i], self.n_filters[i+1], use_batchnorm ))
         self.down = nn.Sequential(*down_blocks)
+        # if using average pool, use global average pooling
+        if self.use_gap:
+            self.emb = nn.Sequential(
+                nn.AdaptiveAvgPool1d(1),
+                nn.Conv1d(self.n_filters[-1], nemb, kernel_size=1, stride=1, padding=0)
+            )
+            return
         # create embedding
         cur_sz = int(insz / (2**(len(self.n_filters)-1)))
         inter_ch =  int(abs(self.n_filters[-1]+nemb)/2)
@@ -86,7 +94,7 @@ class Net(nn.Module):
 
 if __name__ == '__main__':
     # init network
-    emb = Net(nemb=12, nch=1, powf=4, max_powf=7, insz=4096, minsz=4, nbsr=0, leak=0.2, batch_momentum=.01, sigmoid_from=10)
+    emb = Net(nemb=12, nch=1, powf=4, max_powf=7, insz=4096, minsz=4, nbsr=0, leak=0.2, batch_momentum=.01, use_gap=True)
             # stride, avgpool maxpool
     emb.cuda()
     # describe
