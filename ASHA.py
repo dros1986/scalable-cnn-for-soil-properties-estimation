@@ -49,7 +49,7 @@ if __name__ == '__main__':
         'src_prefix': 'spc.',
         'batch_size': 2000, # 10000
         'num_workers': 8,
-        'fmin': tune.choice([400, 800, 1200]),    # 450
+        'fmin': tune.choice([450, 800, 1200]),
         'fmax': tune.choice([2300, 2400, 2500]),
 
         'powf': 4,
