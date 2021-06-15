@@ -90,9 +90,9 @@ class Experiment(pl.LightningModule):
             out = self(src)
         # project to output space
         out = self.project_to_output_space(out)
-        # reverse normalization and quantization
-        tgt = self.tgt_norm.invert(tgt) #.cpu())
-        out = self.tgt_norm.invert(out) #.cpu())
+        # # reverse normalization and quantization
+        # tgt = self.tgt_norm.invert(tgt) #.cpu())
+        # out = self.tgt_norm.invert(out) #.cpu())
         # test
         cur_val = test_batch(out, tgt, self.tgt_vars)
         # define output dict
