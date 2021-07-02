@@ -45,7 +45,7 @@ if __name__ == '__main__':
     config = {
         'train_csv': '/home/flavio/datasets/LucasLibrary/shared/lucas_dataset_train.csv',
         'val_csv': '/home/flavio/datasets/LucasLibrary/shared/lucas_dataset_val.csv',
-        'test_csv': '/home/flavio/datasets/LucasLibrary/shared/lucas_dataset_val.csv',
+        'test_csv': '/home/flavio/datasets/LucasLibrary/shared/lucas_dataset_test.csv',
         'src_prefix': 'spc.',
         'batch_size': 2000, # 10000
         'num_workers': 8,
