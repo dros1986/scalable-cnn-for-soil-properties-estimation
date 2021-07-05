@@ -49,15 +49,18 @@ if __name__ == '__main__':
         'src_prefix': 'spc.',
         'batch_size': 2000, # 10000
         'num_workers': 8,
-        'fmin': tune.choice([450, 800, 1200]),
-        'fmax': tune.choice([2300, 2400, 2500]),
+        'fmin': tune.uniform(400, 1200),
+        'fmax': tune.uniform(2300, 2500),
+        # 'fmin': tune.choice([450, 800, 1200]),
+        # 'fmax': tune.choice([2300, 2400, 2500]),
 
         'powf': 4,
         'max_powf': 7,
         'insz': tune.choice([512, 1024, 2048]),
         'minsz': 4,
-        'nsbr': 1,
-        'leak': tune.choice([0, 0.2]),
+        'nsbr': tune.choice([0,1,2]),
+        'leak': tune.uniform(0, 0.2),
+        # 'leak': tune.choice([0, 0.2]),
         'batch_momentum': 0.01,
         'use_batchnorm': tune.choice([True, False]),
         'use_gap': False,
@@ -85,7 +88,7 @@ if __name__ == '__main__':
 
     analysis = tune.run(
         train_grid_point,
-        name = 'asha2',
+        name = 'asha3',
         local_dir = '/home/flavio/ray_results',
         config = config,
         metric = 'r2/global',
@@ -102,6 +105,6 @@ if __name__ == '__main__':
         pprint(best_config)
         # Get a dataframe for analyzing trial results.
         df = analysis.dataframe()
-        df.to_csv('asha2.csv', sep=';', index=False)
+        df.to_csv('asha3.csv', sep=';', index=False)
     except:
         import ipdb; ipdb.set_trace()
