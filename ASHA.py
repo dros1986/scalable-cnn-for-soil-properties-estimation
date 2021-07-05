@@ -1,4 +1,5 @@
 import ray
+import json
 from ray import tune
 from ray.tune.integration.pytorch_lightning import TuneReportCallback
 from ray.tune.integration.docker import DockerSyncer
@@ -49,8 +50,8 @@ if __name__ == '__main__':
         'src_prefix': 'spc.',
         'batch_size': 2000, # 10000
         'num_workers': 8,
-        'fmin': tune.uniform(400, 1200),
-        'fmax': tune.uniform(2300, 2500),
+        'fmin': tune.randint(400, 1200),
+        'fmax': tune.randint(2300, 2500),
         # 'fmin': tune.choice([450, 800, 1200]),
         # 'fmax': tune.choice([2300, 2400, 2500]),
 
@@ -58,7 +59,7 @@ if __name__ == '__main__':
         'max_powf': 7,
         'insz': tune.choice([512, 1024, 2048]),
         'minsz': 4,
-        'nsbr': tune.choice([0,1,2]),
+        'nsbr': tune.randint(0, 3),
         'leak': tune.uniform(0, 0.2),
         # 'leak': tune.choice([0, 0.2]),
         'batch_momentum': 0.01,
@@ -93,7 +94,8 @@ if __name__ == '__main__':
         config = config,
         metric = 'r2/global',
         mode = 'max',
-        resources_per_trial = {'cpu': 4, 'gpu': 0.5},
+        resources_per_trial = {'cpu': 6, 'gpu': 1},
+        # resources_per_trial = {'cpu': 4, 'gpu': 0.5},
         scheduler=asha_scheduler,
         resume = False
         # resume = "ERRORED_ONLY"
@@ -106,5 +108,7 @@ if __name__ == '__main__':
         # Get a dataframe for analyzing trial results.
         df = analysis.dataframe()
         df.to_csv('asha3.csv', sep=';', index=False)
+        with open('asha3.json', 'w') as f:
+            json.dump(best_config, f, ensure_ascii=False, indent=4)
     except:
         import ipdb; ipdb.set_trace()
