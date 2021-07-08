@@ -8,6 +8,8 @@ from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 import pytorch_lightning as pl
 from Experiment import Experiment
 from pprint import pprint
+from datetime import datetime
+
 
 def train_grid_point(config, data_dir=None, max_epochs=5000, num_gpus=1): # 5000 10000
     # define model
@@ -39,6 +41,9 @@ def train_grid_point(config, data_dir=None, max_epochs=5000, num_gpus=1): # 5000
 
 
 if __name__ == '__main__':
+    # define experiment name
+    now = datetime.now()
+    expname = 'asha_' + now.strftime("%Y-%m-%d_%H:%M:%S")
     # init ray
     # ray.init(address='localhost:6379', _redis_password='5241590000000000')
     ray.init(address='149.132.176.97:6379', _redis_password='5241590000000000')
@@ -66,9 +71,9 @@ if __name__ == '__main__':
         'use_batchnorm': tune.choice([True, False]),
         'use_gap': False,
 
-        'learning_rate': tune.uniform(0.001, 0.0001),
+        'learning_rate': tune.uniform(0.001, 0.0005),
         'weight_decay': tune.uniform(0, 0.05),
-        'loss': tune.choice(['l1','l2', 'classification']),
+        'loss': tune.choice(['classification', 'l2', 'l1']),
         'val': 'r2',
 
         'nbins': 10, # 'nbins': tune.choice([10, 20, 30]),
@@ -80,8 +85,8 @@ if __name__ == '__main__':
         time_attr='epoch',
         # metric='r2/global',
         # mode='max',
-        max_t=1000,
-        grace_period=100,
+        max_t=100,
+        grace_period=10,
         reduction_factor=4,
         brackets=1
     )
@@ -89,7 +94,7 @@ if __name__ == '__main__':
 
     analysis = tune.run(
         train_grid_point,
-        name = 'asha3',
+        name = expname,
         local_dir = '/home/flavio/ray_results',
         config = config,
         metric = 'r2/global',
@@ -107,8 +112,8 @@ if __name__ == '__main__':
         pprint(best_config)
         # Get a dataframe for analyzing trial results.
         df = analysis.dataframe()
-        df.to_csv('asha3.csv', sep=';', index=False)
-        with open('asha3.json', 'w') as f:
+        df.to_csv(expname + '.csv', sep=';', index=False)
+        with open(expname + '.json', 'w') as f:
             json.dump(best_config, f, ensure_ascii=False, indent=4)
     except:
         import ipdb; ipdb.set_trace()
