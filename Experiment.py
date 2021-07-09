@@ -246,14 +246,31 @@ if __name__ == '__main__':
     					default=';', type=str)
     parser.add_argument("-out", "--out", help="Output filename.",
     					default='', type=str)
+    parser.add_argument("-test", "--test", help="If set, computes metrics instead of regen.",
+    					action='store_true')
     # parse args
     args = parser.parse_args()
     # load model
     model = Experiment.load_from_checkpoint(args.checkpoint)
     model.eval()
-    # if out not specified, save in folder
-    if args.out == '':
-        args.out = os.path.join(os.path.dirname(args.checkpoint), 'test.csv')
-    # regen
-    # regen(self, out_fn, dl=None, sep=';', map='', spatial_resolution=(0.05, 0.05), crs=4326)
-    model.regen(args.out, sep=args.sep, map=args.map, spatial_resolution=args.spatial_resolution, crs=args.crs)
+    # if testing is set
+    if args.test:
+        if args.out == '':
+            args.out = os.path.join(os.path.dirname(args.checkpoint), 'results.csv')
+        # test metrics
+        trainer = pl.Trainer(gpus=1, deterministic=True)
+        res = trainer.test(model=model)
+        res = res[0]
+        # save to file
+        df = pd.DataFrame.from_dict(res.items())
+        df.columns = ['var', 'val']
+        df = df.set_index('var')
+        df.to_csv(args.out, sep=args.sep, float_format='%.6f')
+    else:
+        # else regen
+        # if out not specified, save in folder
+        if args.out == '':
+            args.out = os.path.join(os.path.dirname(args.checkpoint), 'test.csv')
+        # regen
+        # regen(self, out_fn, dl=None, sep=';', map='', spatial_resolution=(0.05, 0.05), crs=4326)
+        model.regen(args.out, sep=args.sep, map=args.map, spatial_resolution=args.spatial_resolution, crs=args.crs)
