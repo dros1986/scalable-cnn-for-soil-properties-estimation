@@ -40,20 +40,21 @@ if __name__ == '__main__':
         'batch_size': 2000, # 10000
         'num_workers': 8,
         'fmin':450,
-        'fmax':2500,
+        'fmax':2400,
 
         'powf': 4,
         'max_powf': 7,
-        'insz': tune.grid_search([512, 1024, 2048]),
+        'insz': 2048,
         'minsz': 4,
         'nsbr': 1,
-        'leak': 0,
+        'leak': 0.2,
         'batch_momentum': 0.01,
+        'use_batchnorm': True,
+        'use_gap': False,
 
-        'learning_rate':  0.0001,  #0.001,
+        'learning_rate':  0.0001,
         'weight_decay': 0.01,
         'loss': 'l1',
-        # 'loss': tune.grid_search(['l1','l2', 'classification']),
         'val': 'r2',
         'nbins': 10, # 10
         'tgt_vars': tune.grid_search([['coarse'],['clay'],['silt'],['sand'],['pH.in.CaCl2'],['pH.in.H2O'],['OC'],['CaCO3'],['N'],['P'],['K'],['CEC']]),
@@ -63,7 +64,7 @@ if __name__ == '__main__':
 
     analysis = tune.run(
         train_grid_point,
-        name = 'single_vars2',
+        name = 'sv',
         local_dir = '/home/flavio/ray_results',
         config = config,
         metric = 'r2/global',
@@ -78,7 +79,7 @@ if __name__ == '__main__':
         pprint(best_config)
         # Get a dataframe for analyzing trial results.
         df = analysis.dataframe()
-        df.to_csv('grid_results_single_vars2.csv', sep=';', index=False)
+        df.to_csv('sv.csv', sep=';', index=False)
         import ipdb; ipdb.set_trace()
     except:
         import ipdb; ipdb.set_trace()
