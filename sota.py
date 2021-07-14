@@ -140,8 +140,8 @@ if __name__ == '__main__':
                     pred = pd.concat([coords, pred], axis=1)
                     # render
                     cur_outdir = os.path.join(args.outdir, cur_model)
-                    os.makedirs(outdir, exist_ok = True)
-                    renderer.render(pred, [cur_tgt_var], out_dir=os.path.dirname(cur_fn), \
+                    os.makedirs(cur_outdir, exist_ok = True)
+                    renderer.render(pred, [cur_tgt_var], out_dir=cur_outdir, \
                             spatial_res=(0.05, 0.05), lon_key='GPS_LONG', lat_key='GPS_LAT')
 
 
