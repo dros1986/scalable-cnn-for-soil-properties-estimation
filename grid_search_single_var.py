@@ -15,12 +15,16 @@ def train_grid_point(config, data_dir=None, max_epochs=5000, num_gpus=1): # 5000
     # define metrics
     metrics = {}
     for cur_var in config['tgt_vars'] + ['global']:
-        for cur_metric in ['mae','mse','rmse','r2']:
+        for cur_metric in ['mae','mse','rmse','r2', 'pearson']:
             metrics[cur_metric + '/' + cur_var] = 'avg/' + cur_metric + '/'+cur_var
     # define tune callback
     callbacks = [
                   TuneReportCallback(metrics, on="validation_end"),
-                  ModelCheckpoint(monitor='avg/r2/global', save_top_k=1, save_last=True)
+                  ModelCheckpoint(monitor='avg/r2/global', mode='max', save_top_k=1, save_last=True, filename='r2'),
+                  ModelCheckpoint(monitor='avg/mae/global', mode='min', save_top_k=1, save_last=True, filename='mae'),
+                  ModelCheckpoint(monitor='avg/mse/global', mode='min', save_top_k=1, save_last=True, filename='mse'),
+                  ModelCheckpoint(monitor='avg/rmse/global', mode='min', save_top_k=1, save_last=True, filename='rmse'),
+                  ModelCheckpoint(monitor='avg/pearson/global', mode='max', save_top_k=1, save_last=True, filename='pearson'),
                 ]
     # define trainer
     trainer = pl.Trainer(gpus=num_gpus, max_epochs=max_epochs, progress_bar_refresh_rate=20, callbacks=callbacks)
