@@ -17,6 +17,7 @@ class DatasetLucas(object):
             tgt_vars = ['coarse','clay','silt','sand','pH.in.CaCl2','pH.in.H2O','OC','CaCO3','N','P','K','CEC'],
             fmin = None,
             fmax = None,
+            interpolate_n = 0,
             batch_size = 100,
             sep = ',',
             drop_last = True,
@@ -36,6 +37,18 @@ class DatasetLucas(object):
         # get source and target variables
         self.src_cols, self.src_x, self.src_y = self.get_src(df, src_prefix, fmin, fmax)
         self.tgt_vars = self.get_tgt(df, tgt_vars)
+        # interpolate if required
+        if interpolate_n > 0:
+            newx = np.linspace(self.fmin, self.fmax, interpolate_n, endpoint=True)
+            newy = np.zeros((self.src_y.size(0), newx.shape[0]))
+            for i in range(self.src_y.size(0)):
+                newy[i] = np.interp(
+                    newx,  # where to interpret
+                    self.src_x,  # known positions
+                    self.src_y[i],  # known data points
+                )
+            self.src_x = torch.from_numpy(newx).float()
+            self.src_y = torch.from_numpy(newy).float()
         # check size
         assert(self.src_y.shape[0] == self.tgt_vars.shape[0])
         # normalize source and target variables
@@ -71,7 +84,7 @@ class DatasetLucas(object):
         src_x = x[pos]
         src_y = df[src_cols].to_numpy()
         # keep only frequences in range
-        cond = np.ones(src_x.shape).astype(np.bool)
+        cond = np.ones(src_x.shape).astype(bool)
         if fmin is not None:
             # import ipdb; ipdb.set_trace()
             cond *= src_x>=fmin
@@ -134,7 +147,8 @@ if __name__ == '__main__':
     # instantiate dataset
     csv = '/home/flavio/datasets/LucasLibrary/shared/lucas_dataset_val.csv'
     # data = DatasetLucas(csv, src_norm, tgt_norm, quant, fmin=500, fmax=1000, batch_size=500)
-    data = DatasetLucas(csv, src_norm, tgt_norm, quant, batch_size=100)
+    data = DatasetLucas(csv, src_norm, tgt_norm, quant, batch_size=100, \
+                fmin=450, fmax=2499.5, interpolate_n=0)
     # boh = DatasetLucas(csv, src_norm, tgt_norm, quant, batch_size=500)
     print(data.src_x.min())
     print(data.src_x.max())
