@@ -200,13 +200,15 @@ class Experiment(pl.LightningModule):
 
 
     def regen(self, out_fn, dl=None, sep=';', map='', spatial_resolution=(0.05, 0.05), crs=4326):
-        # import renderer
-        from Renderer import Renderer
         # get dataloader if not specified
         if dl == None:
             dl = self.test_dataloader(return_coords=True)
-        # create renderer object
-        renderer = Renderer(map, crs=crs)
+        # if map is specified
+        if not map=='':
+            # import renderer
+            from Renderer import Renderer
+            # create renderer object
+            renderer = Renderer(map, crs=crs)
         # create output var
         tot = None
         # for each batch
@@ -225,8 +227,9 @@ class Experiment(pl.LightningModule):
         # save to csv
         df.to_csv(out_fn, sep=sep, float_format='%.6f', index=False)
         # render
-        renderer.render(df, self.tgt_vars, out_dir=os.path.dirname(out_fn), \
-                spatial_res=spatial_resolution, lon_key='lon', lat_key='lat')
+        if not map=='':
+            renderer.render(df, self.tgt_vars, out_dir=os.path.dirname(out_fn), \
+                    spatial_res=spatial_resolution, lon_key='lon', lat_key='lat')
 
 
 
