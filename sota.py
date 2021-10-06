@@ -3,6 +3,7 @@ import numpy as np
 import argparse
 import os
 import pickle
+# import torch
 # import matplotlib.pyplot as plt
 
 # Models
@@ -22,20 +23,53 @@ from sklearn.model_selection import cross_val_predict
 from sklearn.model_selection import PredefinedSplit
 
 
+
+def get_src(df, src_prefix, fmin=None, fmax=None):
+    ''' gets infrared signals using cols starting with src_prefix '''
+    # get x points
+    src_cols = [col for col in df.columns if col.startswith(src_prefix)]
+    x = np.array([float(col[len(src_prefix):]) for col in src_cols])
+    # sort x points in increasing order
+    pos = np.argsort(x)
+    src_cols = [src_cols[cur_pos] for cur_pos in pos]
+    # extract x and y values
+    src_x = x[pos]
+    src_y = df[src_cols].to_numpy()
+    # keep only frequences in range
+    cond = np.ones(src_x.shape).astype(bool)
+    if fmin is not None:
+        # import ipdb; ipdb.set_trace()
+        cond *= src_x>=fmin
+    if fmax is not None:
+        cond *= src_x<=fmax
+    src_y = src_y[:,cond]
+    src_cols = [cur_col for (cur_col, cur_cond) in zip(src_cols, cond) if cur_cond]
+    src_x = src_x[cond]
+    # convert to tensor
+    # src_x = torch.from_numpy(src_x).float()
+    # src_y = torch.from_numpy(src_y).float()
+    src_x = src_x.astype(np.float32)
+    src_y = src_y.astype(np.float32)
+    # return
+    return src_cols, src_x, src_y
+
+
 def measure(y_pred, y_test):
     mae = np.mean(abs(y_test - y_pred))
     mse = np.mean((y_test - y_pred)**2)
     rmse = np.sqrt(np.mean((y_test - y_pred)**2))
-    r2 = abs(r2_score(y_test, y_pred))
+    r2 = r2_score(y_test, y_pred)
     return mae, mse, rmse, r2
 
 
 
 def train_model(model, x_train, y_train):
+    # get number of features
+    nfeats = 1 if y_train.ndim == 1 else y_train.shape[1]
     # train random forest
     if model == 'rf':
         print("Random Forest...")
-        rf = RandomForestRegressor(max_features = 10, n_estimators = 200)
+        rf = RandomForestRegressor(max_features = nfeats, n_estimators = 200)
         rf.fit(x_train, y_train)
         return rf
     # train svr
@@ -86,13 +120,16 @@ if __name__ == '__main__':
     if args.train:
         # load training data
         print("Reading train data...")
-        lucas_train = pd.read_csv(os.path.join(args.indir, "lucas_dataset_train.csv"))
+        lucas_train = pd.read_csv(os.path.join(args.indir, "lucas_dataset_train.csv"), sep=',')
         # for each variable
         for cur_tgt_var in args.tgt_vars:
             print('*************** {} ***************'.format(cur_tgt_var))
             # get training data
-            x_train = np.array(lucas_train.iloc[:,1:4201])
+            #x_train = np.array(lucas_train.iloc[:,1:4201])
+            cols, bands, x_train = get_src(lucas_train, 'spc.', fmin=None, fmax=None)
             y_train = np.array(lucas_train[cur_tgt_var])
+            x_train = x_train.astype(np.float32)
+            y_train = y_train.astype(np.float32)
             # train
             for model in args.models:
                 # define output path
@@ -113,8 +150,11 @@ if __name__ == '__main__':
         for cur_tgt_var in args.tgt_vars:
             print('*************** {} ***************'.format(cur_tgt_var))
             # get data
-            x_test = np.array(lucas_test.iloc[:,1:4201])
+            # x_test = np.array(lucas_test.iloc[:,1:4201])
+            cols, bands, x_test = get_src(lucas_test, 'spc.', fmin=None, fmax=None)
             y_test = np.array(lucas_test[cur_tgt_var])
+            x_test = x_test.astype(np.float32)
+            y_test = y_test.astype(np.float32)
             coords = lucas_test[['GPS_LAT','GPS_LONG']]
             # for each model
             for cur_model in args.models:
