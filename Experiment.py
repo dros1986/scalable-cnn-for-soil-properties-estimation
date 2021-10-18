@@ -240,6 +240,8 @@ if __name__ == '__main__':
     # checkpoint path
     parser.add_argument("-ckp", "--checkpoint", help="Checkpoint.",
     					default='', type=str)
+    parser.add_argument("-csv", "--test_csv", help="Test CSV. If empty, uses the one specified in training.",
+                        default='', type=str)
     parser.add_argument("-map", "--map", help="Map shapefile. If empty, no rendering.",
     					default='', type=str)
     parser.add_argument("-crs", "--crs", help="CRS of map and coords in csv.",
@@ -255,7 +257,11 @@ if __name__ == '__main__':
     # parse args
     args = parser.parse_args()
     # load model
-    model = Experiment.load_from_checkpoint(args.checkpoint)
+    if args.test_csv == '':
+        model = Experiment.load_from_checkpoint(args.checkpoint)
+    else:
+        print('Using different test csv: {}'.format(args.test_csv))
+        model = Experiment.load_from_checkpoint(args.checkpoint, test_csv=args.test_csv)
     model.eval()
     # if testing is set
     if args.test:
