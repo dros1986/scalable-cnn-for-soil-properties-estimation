@@ -111,6 +111,10 @@ if __name__ == '__main__':
     parser.add_argument("-models", "--models", help="Models.",
     					default = ['rf','svr','brt'],
                         nargs='+')
+    parser.add_argument("-fmin", "--fmin", help="Lowest band.",
+                        default=450, type=float)
+    parser.add_argument("-fmax", "--fmax", help="Highest band.",
+                        default=None, type=float)
     # parse args
     args = parser.parse_args()
 
@@ -126,7 +130,7 @@ if __name__ == '__main__':
             print('*************** {} ***************'.format(cur_tgt_var))
             # get training data
             #x_train = np.array(lucas_train.iloc[:,1:4201])
-            cols, bands, x_train = get_src(lucas_train, 'spc.', fmin=None, fmax=None)
+            cols, bands, x_train = get_src(lucas_train, 'spc.', fmin=args.fmin, fmax=args.fmax)
             y_train = np.array(lucas_train[cur_tgt_var])
             x_train = x_train.astype(np.float32)
             y_train = y_train.astype(np.float32)
@@ -151,7 +155,7 @@ if __name__ == '__main__':
             print('*************** {} ***************'.format(cur_tgt_var))
             # get data
             # x_test = np.array(lucas_test.iloc[:,1:4201])
-            cols, bands, x_test = get_src(lucas_test, 'spc.', fmin=None, fmax=None)
+            cols, bands, x_test = get_src(lucas_test, 'spc.', fmin=args.fmin, fmax=args.fmax)
             y_test = np.array(lucas_test[cur_tgt_var])
             x_test = x_test.astype(np.float32)
             y_test = y_test.astype(np.float32)
