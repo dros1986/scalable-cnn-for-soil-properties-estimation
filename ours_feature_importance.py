@@ -30,16 +30,19 @@ from Experiment import Experiment
 from GradCAM import GradCAM
 
 
-def onsignal(signal, importance, fn): #, sz=4200):
-    sz = signal.shape[0]
+def onsignal(signal, importance, fn, xs, tgt_name): #, sz=4200):
+    # sz = signal.shape[0]
     # define colormap
     cmap = matplotlib.cm.get_cmap('YlOrRd')
     # normalize between 0 and 1
     importance = (importance - importance.min()) / (importance.max() - importance.min())
     # plot heatmap
-    plt.figure(figsize=(10,5))
-    plt.scatter(np.array(range(sz)), signal, c=cmap(importance))
+    plt.figure(figsize=(10,4)) # 10, 5
+    # plt.scatter(np.array(range(sz)), signal, c=cmap(importance))
+    plt.scatter(xs, signal, c=cmap(importance))
     plt.locator_params(axis='x', nbins=20)
+    plt.grid()
+    # plt.title(tgt_name)
     plt.tight_layout()
     # show
     plt.savefig(fn, dpi=100)
@@ -65,6 +68,8 @@ if __name__ == '__main__':
     cmap = matplotlib.cm.get_cmap('YlOrRd')
     # get dataloader
     dl = model.test_dataloader(return_coords=False)
+    # get xs
+    xs = dl.src_x
     # get vars
     tgt_vars = model.conf['tgt_vars']
     # if out not specified, save in folder
@@ -106,6 +111,8 @@ if __name__ == '__main__':
     all_grads = all_grads[:,0]
     # set importance
     importance = all_grads.numpy()
+    # save importance
+    # os.path.join(args.outdir, 'importance.pkl')
     # plot for each variable
     for i in range(len(tgt_vars)):
         # get current variable name
@@ -117,4 +124,4 @@ if __name__ == '__main__':
         out_fn = os.path.join(cur_out_dir, cur_tgt_var + '.png')
         os.makedirs(cur_out_dir, exist_ok=True)
         # import ipdb; ipdb.set_trace()
-        onsignal(first_signal, cur_importance, out_fn) #, sz=4200)
+        onsignal(first_signal, cur_importance, out_fn, xs, cur_tgt_var) #, sz=4200)

@@ -34,7 +34,7 @@ def onsignal(signal, importance, fn, sz=4200):
     # normalize between 0 and 1
     importance = (importance - importance.min()) / (importance.max() - importance.min())
     # plot heatmap
-    plt.figure(figsize=(10,5))
+    plt.figure(figsize=(10,4)) # 10,5
     plt.scatter(np.array(range(sz)), signal, c=cmap(importance))
     plt.locator_params(axis='x', nbins=20)
     plt.tight_layout()

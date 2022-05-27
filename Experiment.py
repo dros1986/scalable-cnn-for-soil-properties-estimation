@@ -14,7 +14,7 @@ from Normalization import *
 from DatasetLucas import DatasetLucas
 from networks import Net
 # from Renderer import Renderer
-from test import test_batch #, is_better
+from testing import test_batch #, is_better
 
 import pytorch_lightning as pl
 
@@ -281,6 +281,7 @@ if __name__ == '__main__':
         # if out not specified, save in folder
         if args.out == '':
             args.out = os.path.join(os.path.dirname(args.checkpoint), 'test.csv')
+        os.makedirs(os.path.dirname(args.out), exist_ok=True)
         # regen
         # regen(self, out_fn, dl=None, sep=';', map='', spatial_resolution=(0.05, 0.05), crs=4326)
         model.regen(args.out, sep=args.sep, map=args.map, spatial_resolution=args.spatial_resolution, crs=args.crs)
