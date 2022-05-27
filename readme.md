@@ -3,8 +3,11 @@
 This repo is the implementation of the paper:
 
 <br>
-**Design and analysis of a scalable neural architecture for soil properties estimation from spectral information**<br>
-*Piccoli F., Rossini M., Colombo C., Napoletano P.*<br>
+
+**Design and analysis of a scalable neural architecture for soil properties estimation from spectral information**
+<br>
+*Piccoli F., Rossini M., Colombo C., Napoletano P.*
+<br>
 Computers & Geosciences
 <br>
 <br>
