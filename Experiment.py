@@ -23,8 +23,8 @@ class Experiment(pl.LightningModule):
     def __init__(self, conf):
         super(Experiment, self).__init__()
         # save parameters
-        # self.save_hyperparameters(conf) # not working
-        self.hparams = conf
+        self.save_hyperparameters(conf) # not working
+        # self.hparams = conf
         self.conf = conf
         # define output size
         if conf['loss'] == 'classification':

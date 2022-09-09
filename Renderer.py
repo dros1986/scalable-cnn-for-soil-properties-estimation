@@ -29,7 +29,12 @@ class Renderer(object):
                                         df[cur_var].to_numpy(),
                                         spatial_res=spatial_res, epsg=self.crs)
             # get vars
-            xmin,xmax,ymin,ymax = interpolated.extent
+            # xmin,xmax,ymin,ymax = interpolated.extent
+            xmin = interpolated.x_min
+            xmax = interpolated.x_max
+            ymin = interpolated.y_min
+            ymax = interpolated.y_max
+
             west, north = xmin, ymax
             nrows, ncols = interpolated.array.shape
             # create transform
