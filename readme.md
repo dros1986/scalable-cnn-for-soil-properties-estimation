@@ -6,7 +6,7 @@ This repo is the implementation of the paper:
 
 **Design and analysis of a scalable neural architecture for soil properties estimation from spectral information**
 <br>
-*Piccoli F., Rossini M., Colombo C., Napoletano P.*
+*Piccoli F., Rossini M., Colombo C., Schettini R., Napoletano P.*
 <br>
 Computers & Geosciences
 <br>
